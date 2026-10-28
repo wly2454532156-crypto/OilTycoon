@@ -302,7 +302,7 @@
     "__prefab": null,
     "gridWidth": 40,
     "gridHeight": 20,
-    "debugRevealAll": true,
+    "debugRevealAll": false,
     "gridRenderer": {
       "__id__": 8
     },

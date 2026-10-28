@@ -1,4 +1,4 @@
-import { _decorator, Component, Graphics, Color, UITransform, Node, EventTouch, Vec3 } from 'cc';
+import { _decorator, Component, Graphics, Color, UITransform, Node, EventTouch, Touch, Vec2, Vec3 } from 'cc';
 import { GridManager } from '../Core/GridManager';
 import { PipeNetworkManager, PipeNode } from '../Core/PipeNetworkManager';
 import { EconomyManager } from '../Economy/EconomyManager';
@@ -11,6 +11,9 @@ const { ccclass, property } = _decorator;
 const COLOR_PIPE_DONE = new Color('#333333');
 const COLOR_PIPE_BUILDING = new Color('#AAAAAA');
 const COLOR_FLOW = new Color('#000000');
+
+const MIN_ZOOM = 1;
+const MAX_ZOOM = 3;
 
 @ccclass('PipeController')
 export class PipeController extends Component {
@@ -33,21 +36,39 @@ export class PipeController extends Component {
     private _lastGridX = -1;
     private _lastGridY = -1;
 
+    // 双指缩放/拖动（Phase 6）
+    private _zoomScale = 1;
+    private _panX = 0;
+    private _panY = 0;
+    private _lastPinchDist = 0;
+    private _lastPinchMid: Vec2 | null = null;
+    private _isPinching = false;
+    private readonly _baseGridPos = new Vec3();
+    private readonly _basePipePos = new Vec3();
+
     init(gridMgr: GridManager, pipeMgr: PipeNetworkManager, economy: EconomyManager, gridRenderer: GridRenderer): void {
         this._gridMgr = gridMgr;
         this._pipeMgr = pipeMgr;
         this._economy = economy;
         this._gridRenderer = gridRenderer;
+        if (gridRenderer) {
+            this._baseGridPos.set(gridRenderer.node.position);
+        }
+        this._basePipePos.set(this.node.position);
     }
 
     onLoad(): void {
         this.node.on(Node.EventType.TOUCH_START, this.onTouchStart, this);
         this.node.on(Node.EventType.TOUCH_MOVE, this.onTouchMove, this);
+        this.node.on(Node.EventType.TOUCH_END, this.onTouchEnd, this);
+        this.node.on(Node.EventType.TOUCH_CANCEL, this.onTouchEnd, this);
     }
 
     onDestroy(): void {
         this.node.off(Node.EventType.TOUCH_START, this.onTouchStart, this);
         this.node.off(Node.EventType.TOUCH_MOVE, this.onTouchMove, this);
+        this.node.off(Node.EventType.TOUCH_END, this.onTouchEnd, this);
+        this.node.off(Node.EventType.TOUCH_CANCEL, this.onTouchEnd, this);
     }
 
     renderPipes(): void {
@@ -115,6 +136,15 @@ export class PipeController extends Component {
     }
 
     private onTouchStart(event: EventTouch): void {
+        // 第二根手指按下：进入捏合模式
+        const touches = event.getTouches();
+        if (touches.length >= 2) {
+            this._isPinching = true;
+            this._lastPinchDist = this._pinchDist(touches);
+            this._lastPinchMid = this._pinchMid(touches);
+            return;
+        }
+
         const { gridX, gridY } = this._toGrid(event);
 
         // 工具使用：选中工具后，点地图执行工具
@@ -156,6 +186,30 @@ export class PipeController extends Component {
     }
 
     private onTouchMove(event: EventTouch): void {
+        // 捏合模式：两指缩放 + 拖动，不画管
+        const touches = event.getTouches();
+        if (this._isPinching || touches.length >= 2) {
+            if (touches.length < 2) {
+                this._isPinching = false;
+                return;
+            }
+            this._isPinching = true;
+            const dist = this._pinchDist(touches);
+            const mid = this._pinchMid(touches);
+            if (this._lastPinchDist > 0) {
+                const factor = dist / this._lastPinchDist;
+                this._zoomScale = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, this._zoomScale * factor));
+            }
+            if (this._lastPinchMid) {
+                this._panX += mid.x - this._lastPinchMid.x;
+                this._panY += mid.y - this._lastPinchMid.y;
+            }
+            this._lastPinchDist = dist;
+            this._lastPinchMid = mid;
+            this._applyTransform();
+            return;
+        }
+
         if (!this._gridMgr || !this._pipeMgr) return;
 
         const { gridX, gridY } = this._toGrid(event);
@@ -210,6 +264,36 @@ export class PipeController extends Component {
             this._lastGridY = y;
         }
         return success;
+    }
+
+    private onTouchEnd(event: EventTouch): void {
+        if (event.getTouches().length < 2) {
+            this._isPinching = false;
+            this._lastPinchDist = 0;
+            this._lastPinchMid = null;
+        }
+    }
+
+    private _pinchDist(touches: Touch[]): number {
+        const p0 = touches[0].getUILocation();
+        const p1 = touches[1].getUILocation();
+        return Vec2.distance(p0, p1);
+    }
+
+    private _pinchMid(touches: Touch[]): Vec2 {
+        const p0 = touches[0].getUILocation();
+        const p1 = touches[1].getUILocation();
+        return new Vec2((p0.x + p1.x) / 2, (p0.y + p1.y) / 2);
+    }
+
+    private _applyTransform(): void {
+        if (this._gridRenderer) {
+            const g = this._gridRenderer.node;
+            g.setScale(this._zoomScale, this._zoomScale, 1);
+            g.setPosition(this._baseGridPos.x + this._panX, this._baseGridPos.y + this._panY, 0);
+        }
+        this.node.setScale(this._zoomScale, this._zoomScale, 1);
+        this.node.setPosition(this._basePipePos.x + this._panX, this._basePipePos.y + this._panY, 0);
     }
 
     private _useSelectedTool(x: number, y: number): void {

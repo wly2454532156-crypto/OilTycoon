@@ -1,4 +1,4 @@
-import { _decorator, Component, input, Input, EventKeyboard, KeyCode } from 'cc';
+import { _decorator, Component, Node, Layers, input, Input, EventKeyboard, KeyCode } from 'cc';
 import { GridManager } from './Core/GridManager';
 import { PipeNetworkManager } from './Core/PipeNetworkManager';
 import { MarketManager } from './Economy/MarketManager';
@@ -9,6 +9,7 @@ import { PipeController } from './View/PipeController';
 import { UIPanel } from './View/UIPanel';
 import { WagonRenderer } from './View/WagonRenderer';
 import { ToolPanel } from './View/ToolPanel';
+import { RecapPanel } from './View/RecapPanel';
 
 const { ccclass, property } = _decorator;
 
@@ -51,7 +52,7 @@ export class GameManager extends Component {
     // 日历与目标
     private currentDay = 1;
     private maxDays = 120;
-    private targetMoney = 2000;
+    private targetMoney = 2500;
     private isGameOver = false;
 
     onLoad(): void {
@@ -173,16 +174,22 @@ export class GameManager extends Component {
         const won = this.economy.wallet.balance >= this.targetMoney;
 
         console.log('==========================================');
-        console.log('          《游戏结算 Recap》');
-        console.log(`  目标资产：$${this.targetMoney}`);
-        console.log(`  最终余额：$${this.economy.wallet.balance.toFixed(2)}`);
-        console.log(won ? '  🎉 结果：胜利！' : '  💀 结果：失败');
+        console.log(`  目标资产：$${this.targetMoney} | 最终余额：$${this.economy.wallet.balance.toFixed(2)} | ${won ? '胜利' : '失败'}`);
         console.log('==========================================');
 
-        // 在日期标签上显示胜负，避免静默冻结让人误以为卡死
-        if (this.uiPanel) {
-            this.uiPanel.showGameOver(won);
-        }
+        this._showRecap(won);
+    }
+
+    private _showRecap(won: boolean): void {
+        const canvas = this.node.parent;
+        if (!canvas) return;
+
+        const recapNode = new Node('RecapPanel');
+        recapNode.layer = Layers.Enum.UI_2D;
+        const recap = recapNode.addComponent(RecapPanel);
+        canvas.addChild(recapNode);
+        recapNode.setPosition(0, 0, 0);
+        recap.show(won, this.economy.wallet, this.targetMoney, this.currentDay, this.maxDays);
     }
 
     private _onKeyDown(event: EventKeyboard): void {

@@ -36,13 +36,15 @@ export class PipeNetworkManager {
     private readonly baseBuildCost = 5;
     private readonly branchExtraCost = 15;
     private readonly drillSpeed = 1;
+    private readonly drillUpgradeCost = 150;
 
     // 管宽基准（Width_base）——上调到 5，使流速不被 1 掐死
     private readonly pipeWidth = 5;
 
-    // 科技等级（当前仅管宽生效；其余科技后续接入）
-    private readonly tech = {
+    // 科技等级（管宽 / 钻速）
+    private tech = {
         pipeWidthLevel: 1,
+        drillSpeedLevel: 1,
     };
 
     buildPipe(
@@ -50,7 +52,6 @@ export class PipeNetworkManager {
         y: number,
         fromX: number,
         fromY: number,
-        blockType: BlockType,
         hardness: number,
         economy: EconomyManager,
     ): boolean {
@@ -58,12 +59,6 @@ export class PipeNetworkManager {
         const dy = Math.abs(y - fromY);
         if (dx + dy !== 1) {
             console.warn(`PipeNetworkManager: (${x},${y}) 与 (${fromX},${fromY}) 不相邻，无法延伸管道`);
-            return false;
-        }
-
-        // 岩石阻挡：未解锁高级钻头前，禁止向 Rock 延伸管道
-        if (blockType === BlockType.Rock) {
-            console.warn(`岩石阻挡：(${x},${y}) 为岩石，当前钻头无法穿透`);
             return false;
         }
 
@@ -95,8 +90,8 @@ export class PipeNetworkManager {
             return false;
         }
 
-        // 钻透耗时正式启用：hardness / drillSpeed
-        const time = hardness / this.drillSpeed;
+        // 钻透耗时：硬度 /（基础钻速 × 钻头科技等级）——岩石可钻但明显更慢
+        const time = hardness / (this.drillSpeed * this.tech.drillSpeedLevel);
 
         const node = targetNode ?? this._createNode(x, y);
         fromNode.connectedNodes.push(targetId);
@@ -196,6 +191,14 @@ export class PipeNetworkManager {
         const p = this._pendingBurnPenalty;
         this._pendingBurnPenalty = 0;
         return p;
+    }
+
+    // 升级钻头：钻速等级 +1（钻透时间按等级递减）
+    upgradeDrillSpeed(economy: EconomyManager): boolean {
+        if (economy.wallet.balance < this.drillUpgradeCost) return false;
+        economy.payCost(this.drillUpgradeCost);
+        this.tech.drillSpeedLevel += 1;
+        return true;
     }
 
     updateDrills(dt: number, gridMgr: GridManager): boolean {

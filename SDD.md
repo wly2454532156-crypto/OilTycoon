@@ -266,11 +266,13 @@ $L$ 为新增网格长度，$B$ 为分支节点数。对分叉接头收取额外
 *   对标 Turmoil `GasSupply` + `OnOilBurningStarted`。
 *   验收：`debugRevealAll` 全开迷雾可见浅蓝气藏；钻到气后 tick 日志出现「气体 N」、超阈后「💥 气藏燃烧」+ 停工。
 
-### Phase 4：钻头科技 + 硬岩分级
+### Phase 4：钻头科技 + 硬岩分级（2026-10-28 完成）
 
-*   Rock 由「硬挡」改为「极慢钻透」（`hardnessRock` 已 =8，接入 `drillSpeed` 科技）；新增 `HardRock` 档（`hardness=16`）。
-*   `TechTree.drillSpeedLevel` 落地，升级后钻透时间可感知下降。
-*   验收：岩石可钻但明显慢；升级钻头后变快。
+*   **岩石密度修复**：`rockPBase` 0.05 → **0.14**（原 0.05 会塌缩到 0.6% 几乎不生成），否则无可钻岩石。
+*   **岩石可钻**：移除 `buildPipe` 里的 Rock 阻挡（同时删除死参数 `blockType`），岩石改为「慢钻」——`时间 = 硬度/(钻速×等级)`，岩石硬度 8 → 8 秒。
+*   **硬岩档**：深层岩石（`y >= height/2`）硬度翻倍到 16，钻透更慢；渲染为更深灰（`COLOR_HARD_ROCK`）。
+*   **钻速科技**：`tech.drillSpeedLevel` 落地，`upgradeDrillSpeed()`（$150，+1 级，钻透时间按等级递减）；键盘 `D` 升级。
+*   验收：岩石可钻但明显慢、硬岩更慢；按 D 升级后钻透变快。
 
 ### Phase 5：结算 Recap 面板 + 目标收紧
 

@@ -49,7 +49,7 @@ export class GridManager {
     private _hardnessOil = 1;
     private _hardnessGas = 1;
 
-    private _rockPBase = 0.05;
+    private _rockPBase = 0.14;
     private _rockWDepth = 0.35;
     private _gasPBase = 0.15;
     private _gasWDepth = 0.25;
@@ -156,7 +156,8 @@ export class GridManager {
                     hardness = this._hardnessGas;
                 } else if (rock[y][x]) {
                     type = BlockType.Rock;
-                    hardness = this._hardnessRock;
+                    // 深层岩石为硬岩档（2 倍硬度，钻透更慢）
+                    hardness = y >= this._height * 0.5 ? this._hardnessRock * 2 : this._hardnessRock;
                 } else {
                     type = BlockType.Dirt;
                     hardness = this._hardnessDirt;

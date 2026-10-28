@@ -63,7 +63,7 @@ export class GameManager extends Component {
     }
 
     start(): void {
-        console.log('🎮 操作：底部目录点选设施/工具；键盘 B=Silo  C=马车容量  V=马车速度  1=卖左  2=卖右');
+        console.log('🎮 操作：底部目录点选设施/工具；键盘 B=Silo  C=容量  V=速度  D=钻头  1=卖左  2=卖右');
 
         this.gridMgr = new GridManager(this.gridWidth, this.gridHeight);
         this.gridMgr.generate();
@@ -196,6 +196,9 @@ export class GameManager extends Component {
                 break;
             case KeyCode.KEY_V:
                 this.wagonMgr.buyWagonSpeedUpgrade(this.economy);
+                break;
+            case KeyCode.KEY_D:
+                this.pipeMgr.upgradeDrillSpeed(this.economy);
                 break;
             case KeyCode.DIGIT_1:
                 this.wagonMgr.dispatchSell('left', this.economy);

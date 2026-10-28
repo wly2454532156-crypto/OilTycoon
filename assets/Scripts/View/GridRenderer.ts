@@ -1,10 +1,11 @@
 import { _decorator, Component, Graphics, Color } from 'cc';
-import { GridManager, BlockType } from '../Core/GridManager';
+import { GridManager, BlockType, GridBlock } from '../Core/GridManager';
 
 const { ccclass, property } = _decorator;
 
 const COLOR_DIRT = new Color('#8B4513');
 const COLOR_ROCK = new Color('#555555');
+const COLOR_HARD_ROCK = new Color('#333333');
 const COLOR_OIL = new Color('#000000');
 const COLOR_GAS = new Color('#ADD8E6');
 const COLOR_FOG = new Color('#8B7355');
@@ -36,7 +37,7 @@ export class GridRenderer extends Component {
                 if (block.isOilHint) {
                     graphics.fillColor = COLOR_OIL_HINT;
                 } else if (block.isRevealed) {
-                    graphics.fillColor = this._colorForType(block.type);
+                    graphics.fillColor = this._colorForType(block);
                 } else {
                     graphics.fillColor = COLOR_FOG;
                 }
@@ -54,10 +55,10 @@ export class GridRenderer extends Component {
         }
     }
 
-    private _colorForType(type: BlockType): Color {
-        switch (type) {
+    private _colorForType(block: GridBlock): Color {
+        switch (block.type) {
             case BlockType.Rock:
-                return COLOR_ROCK;
+                return block.hardness >= 16 ? COLOR_HARD_ROCK : COLOR_ROCK;
             case BlockType.Oil:
                 return COLOR_OIL;
             case BlockType.Gas:

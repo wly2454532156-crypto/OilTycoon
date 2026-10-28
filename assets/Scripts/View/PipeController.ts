@@ -200,7 +200,6 @@ export class PipeController extends Component {
             y,
             fromX,
             fromY,
-            block.type,
             block.hardness,
             this._economy,
         );

@@ -2,6 +2,8 @@ import { _decorator, Component, Graphics, Color, UITransform, Node, EventTouch, 
 import { GridManager } from '../Core/GridManager';
 import { PipeNetworkManager, PipeNode } from '../Core/PipeNetworkManager';
 import { EconomyManager } from '../Economy/EconomyManager';
+import { ToolType, getToolDef } from '../Economy/ToolCatalog';
+import { ToolManager } from '../Core/ToolManager';
 import { GridRenderer } from './GridRenderer';
 
 const { ccclass, property } = _decorator;
@@ -19,6 +21,15 @@ export class PipeController extends Component {
     private _pipeMgr: PipeNetworkManager | null = null;
     private _economy: EconomyManager | null = null;
     private _gridRenderer: GridRenderer | null = null;
+    // 是否处于「待放置井架」态（点击目录「钻井」后为 true，点顶行格完成放置）
+    pendingRig = false;
+
+    // 当前选中的工具（Dowser/Scanner/Mole/Dynamite）；null 表示未选工具，走建管逻辑
+    selectedTool: ToolType | null = null;
+
+    // 最近一次工具使用的反馈消息（供 ToolPanel 显示）
+    lastToolMessage = '';
+
     private _lastGridX = -1;
     private _lastGridY = -1;
 
@@ -106,19 +117,24 @@ export class PipeController extends Component {
     private onTouchStart(event: EventTouch): void {
         const { gridX, gridY } = this._toGrid(event);
 
-        // 井架未放置：点顶行任意格放置井架（扣 $350），并立即作为起笔点
-        if (this._pipeMgr && this._pipeMgr.rigX < 0) {
-            if (gridY === 0 && this._economy && this._economy.buyRig()) {
+        // 工具使用：选中工具后，点地图执行工具
+        if (this.selectedTool !== null) {
+            this._useSelectedTool(gridX, gridY);
+            return;
+        }
+
+        // 井架放置：点击目录「钻井」进入待放置态后，点顶行格完成放置
+        if (this.pendingRig) {
+            if (gridY === 0 && this._pipeMgr) {
                 this._pipeMgr.rigX = gridX;
+                this.pendingRig = false;
                 this._lastGridX = gridX;
                 this._lastGridY = 0;
                 if (this._gridRenderer && this._gridMgr) {
                     this._gridRenderer.renderGrid(this._gridMgr, this._pipeMgr.rigX);
                 }
-            } else {
-                this._lastGridX = -1;
-                this._lastGridY = -1;
             }
+            // 非顶行：保持待放置态，忽略本次点击
             return;
         }
 
@@ -195,6 +211,53 @@ export class PipeController extends Component {
             this._lastGridY = y;
         }
         return success;
+    }
+
+    private _useSelectedTool(x: number, y: number): void {
+        if (!this._gridMgr || !this._economy) return;
+        const tool = this.selectedTool;
+        if (tool === null) return;
+
+        let success = true;
+        let message = '';
+
+        switch (tool) {
+            case ToolType.Dowser: {
+                const hasOil = ToolManager.useDowser(this._gridMgr, x, y);
+                message = hasOil ? '探测器：该列有油 ✓' : '探测器：该列无油 ✗';
+                break;
+            }
+            case ToolType.Scanner: {
+                ToolManager.useScanner(this._gridMgr, x, y);
+                message = '扫描仪：已揭示 3×3 区域';
+                break;
+            }
+            case ToolType.Mole: {
+                ToolManager.useMole(this._gridMgr, x, y);
+                message = '鼹鼠：已向下钻探';
+                break;
+            }
+            case ToolType.Dynamite: {
+                success = ToolManager.useDynamite(this._gridMgr, x, y);
+                message = success ? '炸药：岩石已清除' : '炸药：只能清除岩石';
+                break;
+            }
+            default:
+                return;
+        }
+
+        if (success) {
+            // 成功使用：扣费并取消选中
+            this._economy.payCost(getToolDef(tool).price);
+            this.selectedTool = null;
+        }
+        // 无效使用（如炸药点非岩石）：不扣费、保持选中，但仍反馈原因
+        this.lastToolMessage = message;
+
+        // 工具揭示/清除了地块，重绘网格
+        if (this._gridRenderer && this._gridMgr && this._pipeMgr) {
+            this._gridRenderer.renderGrid(this._gridMgr, this._pipeMgr.rigX);
+        }
     }
 
     private _bresenhamCells(

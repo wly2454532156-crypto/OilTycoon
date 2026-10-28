@@ -8,6 +8,7 @@ import { GridRenderer } from './View/GridRenderer';
 import { PipeController } from './View/PipeController';
 import { UIPanel } from './View/UIPanel';
 import { WagonRenderer } from './View/WagonRenderer';
+import { ToolPanel } from './View/ToolPanel';
 
 const { ccclass, property } = _decorator;
 
@@ -39,6 +40,9 @@ export class GameManager extends Component {
 
     @property(WagonRenderer)
     wagonRenderer: WagonRenderer = null;
+
+    @property(ToolPanel)
+    toolPanel: ToolPanel = null;
 
     private tickTimer = 0;
     private tickInterval = 0.5;
@@ -80,6 +84,10 @@ export class GameManager extends Component {
         }
         if (this.pipeController) {
             this.pipeController.init(this.gridMgr, this.pipeMgr, this.economy, this.gridRenderer);
+        }
+
+        if (this.toolPanel) {
+            this.toolPanel.init(this.economy, this.wagonMgr, this.pipeMgr, this.pipeController);
         }
     }
 
@@ -144,6 +152,9 @@ export class GameManager extends Component {
 
         if (this.uiPanel) {
             this.uiPanel.updateUI(this.economy.wallet, this.market, this.economy.surfaceBuffer, this.currentDay, this.maxDays, this.economy.bufferCapacity);
+        }
+        if (this.toolPanel) {
+            this.toolPanel.refresh();
         }
         if (this.wagonRenderer) {
             this.wagonRenderer.renderWagons(this.wagonMgr);

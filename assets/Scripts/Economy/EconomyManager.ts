@@ -1,3 +1,5 @@
+import { ToolType, getToolDef } from './ToolCatalog';
+
 export interface WalletState {
     balance: number;
     totalEarned: number;
@@ -17,21 +19,25 @@ export class EconomyManager {
     bufferCapacity = 50;
     private readonly spillageRate = 10;
 
-    readonly rigCost = 350;
-    readonly siloCost = 250;
     private readonly siloCapacityBonus = 50;
 
     buyRig(): boolean {
-        if (this.wallet.balance < this.rigCost) return false;
-        this.payCost(this.rigCost);
+        const price = getToolDef(ToolType.Rig).price;
+        if (!this.canAfford(price)) return false;
+        this.payCost(price);
         return true;
     }
 
     buySilo(): boolean {
-        if (this.wallet.balance < this.siloCost) return false;
-        this.payCost(this.siloCost);
+        const price = getToolDef(ToolType.Silo).price;
+        if (!this.canAfford(price)) return false;
+        this.payCost(price);
         this.bufferCapacity += this.siloCapacityBonus;
         return true;
+    }
+
+    canAfford(price: number): boolean {
+        return this.wallet.balance >= price;
     }
 
     payCost(amount: number): void {

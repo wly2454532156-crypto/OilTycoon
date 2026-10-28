@@ -192,3 +192,91 @@ $L$ 为新增网格长度，$B$ 为分支节点数。对分叉接头收取额外
 *   **手动卖油**：取消马车自动卖油。玩家手动触发 `WagonManager.dispatchSell('left'|'right', economy)`，让所有空闲马车装油运往指定收购商，到达时按当时价格结算。
 *   **择时博弈**：油先囤在地表缓存，缓存满则溢油罚款；玩家在「囤着等高价」与「满了被罚」之间取舍。
 *   **交互（原型）**：键盘 B=买 Silo、1=卖左、2=卖右；移动端需换成触控按钮。
+
+## 8. 补全路线图（2026-10-28，对齐 Turmoil 的一手 DLL 分析）
+
+> 目标：从「能跑通一局的 demo」推进到「移动端可玩的完整单局」。共 6 个 Phase，每个独立可验证、有验收标准。所有新增数值以本节为准（后续修正只在本文档改，不回写代码注释）。
+
+### Phase 1：工具/设施目录 + 价格面板 + 点击使用（本次启动，最高优先）
+
+**目标**：把「买设施 / 用工具」从键盘原型换成移动端触控目录——底部工具条显示每项名称+价格，点击选中（工具）或立即购买（设施），再点地图执行；对齐电脑版 Turmoil 的「点工具→点地面」交互。
+
+#### 1.1 工具/设施目录（价格表，唯一规格来源）
+
+| 分类 | 名称 | 键 | 价格 | 效果 |
+|---|---|---|---|---|
+| 设施 | 钻井 Rig | `rig` | $350 | 进入「放井架」状态，点顶行格放置（开启一条管道的必需起点） |
+| 设施 | 油罐 Silo | `silo` | $250 | 立即 +50 地表储油上限 |
+| 设施 | 马车 Wagon | `wagon` | $150 | 立即增加一辆空闲马车（移除「写死 3 辆」） |
+| 工具 | 探测器 Dowser | `dowser` | $100 | 选中后点任意格：报告该列下方是否含油（沿 y 扫描），不消耗目标格 |
+| 工具 | 扫描仪 Scanner | `scanner` | $100 | 选中后点任意格：揭开以该格为中心 3×3 的战争迷雾 |
+| 工具 | 鼹鼠 Mole | `mole` | $100 | 选中后点任意格：从该格向地下随机钻探，揭开一条随机路径（约 5 格）迷雾 |
+| 工具 | 炸药 Dynamite | `dynamite` | $100 | 选中后点岩石格：清除该岩石（变泥土），不生成油 |
+
+#### 1.2 数据层（纯逻辑，不引用 `cc`）
+
+新增 `assets/Scripts/Economy/ToolCatalog.ts`：
+
+*   `export enum ToolType { Rig, Silo, Wagon, Dowser, Scanner, Mole, Dynamite }`
+*   `export interface ToolDef { type: ToolType; name: string; price: number; category: 'facility' | 'tool'; }`
+*   `export const TOOL_CATALOG: ToolDef[] = [...]` —— 上表为唯一数据源。
+*   `EconomyManager` 增加：`getToolDef(t)`、`canAfford(t)`、`buyTool(t)`（余额校验 + `payCost`，返回 boolean）。
+
+#### 1.3 表现层：底部工具条 `ToolPanel`
+
+新增 `assets/Scripts/View/ToolPanel.ts`（挂到 Canvas 下的 `ToolPanel` 节点）：
+
+*   横向排列 7 个条目，每个显示：名称 + `$${price}`（价格用 Label 文本）。
+*   **设施**（Rig/Silo/Wagon）：点击立即 `buyTool`，成功后刷新余额；余额不足置灰禁用。
+*   **工具**（Dowser/Scanner/Mole/Dynamite）：点击进入「选中」态（高亮描边），再点地图执行后**取消选中并扣费**；再次点击已选中项则取消选中。
+*   每 tick 或余额变化时刷新各条目「可买/禁用」状态与余额文本。
+
+#### 1.4 交互接入（复用现有 `PipeController`）
+
+`PipeController` 增加 `selectedTool: ToolType | null` 状态：
+
+*   `selectedTool === null`：维持现有行为（放井架 / 划线建管）。
+*   `selectedTool !== null`：`onTouchStart` 优先走「工具执行」分支——调用对应工具逻辑，成功后 `selectedTool = null`。
+*   工具逻辑（新建 `assets/Scripts/Core/ToolManager.ts` 纯逻辑类）：
+    *   `useDowser(x,y)` → 返回该列 `y>0` 是否含 `Oil`（布尔）；`ToolPanel` 用 label 反馈结果。
+    *   `useScanner(x,y)` → `gridMgr.revealArea(x,y)`（复用现有 `revealArea`）。
+    *   `useMole(x,y)` → 从 `(x,y)` 向下随机走 5 步，逐格 `revealArea`。
+    *   `useDynamite(x,y)` → 若 `block.type===Rock`，改 `Dirt` 并 `revealArea`，否则返还（不扣费）。
+
+#### 1.5 验收标准
+
+*   底部目录显示 7 项及正确价格；余额不足时按钮禁用。
+*   点 Dowser 再点地表，能正确反馈该列有无油；点 Scanner 能揭 3×3 迷雾；点 Mole 能揭随机路径；点 Dynamite 能清岩石。
+*   买 Wagon 后马车数 +1（`WagonManager.wagons` 长度增加），买 Silo 后 `bufferCapacity` +50。
+*   键盘 B/1/2 快捷方式移除或保留为调试，不再作为主交互。
+
+### Phase 2：储油升级链 + 马车购买/升级
+
+*   **SuperSilo**：新增 `buySuperSilo()`（$500，+100 上限），Silo 之外的第二级储油。
+*   **马车不再是写死 3 辆**：`WagonManager` 初始 1 辆，`buyWagon()` 增加；新增 `wagonCapacity` / `wagonSpeed` 升级（`TechTree` 落地）。
+*   验收：可连续买马车；升级后单趟运量/速度可感知变化。
+
+### Phase 3：气体系统（Gas 生成 + 溢出/燃烧）
+
+*   `GridManager` 产出 `BlockType.Gas`（独立种子，优先级低于 Oil、高于 Rock）。
+*   管道接触 Gas 时累积 `gasLevel`，超阈值触发燃烧（扣钱 / 停工一段时间）；对标 Turmoil `GasSupply` + `OnOilBurningStarted`。
+*   验收：气藏可见，钻到气有燃烧风险反馈。
+
+### Phase 4：钻头科技 + 硬岩分级
+
+*   Rock 由「硬挡」改为「极慢钻透」（`hardnessRock` 已 =8，接入 `drillSpeed` 科技）；新增 `HardRock` 档（`hardness=16`）。
+*   `TechTree.drillSpeedLevel` 落地，升级后钻透时间可感知下降。
+*   验收：岩石可钻但明显慢；升级钻头后变快。
+
+### Phase 5：结算 Recap 面板 + 目标收紧
+
+*   把 `_triggerGameOver` 的 console 结算换成真正的 `RecapPanel`（胜负、最终余额、目标、溢油罚款明细）。
+*   `targetMoney` 上调脱离初始余额（避免「不玩也赢」），例如 $3000 + 120 天；或引入「第 N 天前存到 $X」目标。
+*   验收：到点弹出可读结算面板，胜负明确。
+
+### Phase 6：移动端体验（单纹理 + 缩放 + 适配）
+
+*   `renderGrid` 从 800 次 `rect+fill` 改为单张 `Texture2D`（一次 drawcall）。
+*   双指缩放 + 单指拖动地图（解决 `cellSize=20` 触点过小）。
+*   `dateLabel` 场景绑定补上（当前 `scene.scene` 里为 `null`）。
+*   验收：低端机首帧不卡；手机上格子可缩放点准；天数/胜负正常显示。

@@ -1,5 +1,6 @@
 import { EconomyManager } from './EconomyManager';
 import { MarketManager } from './MarketManager';
+import { ToolType, getToolDef } from './ToolCatalog';
 
 export enum WagonState {
     IDLE = 0,
@@ -28,16 +29,28 @@ export class WagonManager {
 
     constructor() {
         for (let i = 0; i < this.wagonCount; i++) {
-            this.wagons.push({
-                id: i,
-                state: WagonState.IDLE,
-                capacity: this.wagonCapacity,
-                currentLoad: 0,
-                speed: this.wagonSpeed,
-                positionX: 0,
-                targetSide: 'left',
-            });
+            this.wagons.push(this._createWagon(i));
         }
+    }
+
+    buyWagon(economy: EconomyManager): boolean {
+        const price = getToolDef(ToolType.Wagon).price;
+        if (economy.wallet.balance < price) return false;
+        economy.payCost(price);
+        this.wagons.push(this._createWagon(this.wagons.length));
+        return true;
+    }
+
+    private _createWagon(id: number): Wagon {
+        return {
+            id,
+            state: WagonState.IDLE,
+            capacity: this.wagonCapacity,
+            currentLoad: 0,
+            speed: this.wagonSpeed,
+            positionX: 0,
+            targetSide: 'left',
+        };
     }
 
     get activeWagonCount(): number {

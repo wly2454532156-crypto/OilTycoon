@@ -81,7 +81,7 @@ export class GameManager extends Component {
 
         // 井架改为玩家自由选址（见 PipeController.onTouchStart），此处不再自动放置
         if (this.gridRenderer) {
-            this.gridRenderer.renderGrid(this.gridMgr, this.pipeMgr.rigX);
+            this.gridRenderer.renderGrid(this.gridMgr, this.pipeMgr.rigs);
         }
         if (this.pipeController) {
             this.pipeController.init(this.gridMgr, this.pipeMgr, this.economy, this.gridRenderer);
@@ -104,7 +104,7 @@ export class GameManager extends Component {
                 this.pipeController.renderPipes();
             }
             if (this.gridRenderer) {
-                this.gridRenderer.renderGrid(this.gridMgr, this.pipeMgr.rigX);
+                this.gridRenderer.renderGrid(this.gridMgr, this.pipeMgr.rigs);
             }
         }
 

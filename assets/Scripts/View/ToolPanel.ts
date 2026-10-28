@@ -105,7 +105,6 @@ export class ToolPanel extends Component {
     private _stateColor(def: ToolDef): Color {
         if (!this._economy) return COLOR_DISABLED;
         if (def.type === ToolType.Rig) {
-            if (this._pipeMgr && this._pipeMgr.rigX >= 0) return COLOR_DISABLED; // 已放井架
             if (this._pipeController && this._pipeController.pendingRig) return COLOR_SELECTED; // 待放置
         }
         // 工具选中态
@@ -150,7 +149,6 @@ export class ToolPanel extends Component {
 
     private _buyRig(): void {
         if (!this._economy || !this._pipeMgr || !this._pipeController) return;
-        if (this._pipeMgr.rigX >= 0) return; // 已放置
         if (this._pipeController.pendingRig) {
             // 再次点击取消待放置（不退费——原型阶段接受）
             this._pipeController.pendingRig = false;

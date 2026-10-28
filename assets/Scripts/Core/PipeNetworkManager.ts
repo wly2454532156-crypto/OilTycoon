@@ -19,8 +19,19 @@ export class PipeNetworkManager {
     // 正在施工的管道队列
     readonly activeDrills: PipeNode[] = [];
 
-    // 井架所在列（gridY=0）。-1 表示尚未放置井架，此时无有效管道起点与抽油出口。
-    rigX = -1;
+    // 井架所在列列表（均位于 gridY=0）。空数组表示尚未放置井架。
+    rigs: number[] = [];
+
+    // 放置井架到顶行某列（每列最多一口）
+    placeRig(x: number): boolean {
+        if (this.rigs.includes(x)) return false;
+        this.rigs.push(x);
+        return true;
+    }
+
+    hasRig(x: number): boolean {
+        return this.rigs.includes(x);
+    }
 
     // 气体系统（Phase 3）
     gasLevel = 0;                 // 当前累积气体
@@ -67,9 +78,9 @@ export class PipeNetworkManager {
 
         let fromNode = this.nodes.get(fromId);
         if (!fromNode) {
-            // 井架限制：起点不在已有网络中时，只允许从井架格 (rigX, 0) 开始建管
-            if (!(fromX === this.rigX && fromY === 0)) {
-                console.warn(`PipeNetworkManager: 首次建管必须从井架 (${this.rigX},0) 开始`);
+            // 井架限制：起点不在已有网络中时，只允许从井架格（顶行任一井架列）开始建管
+            if (!(fromY === 0 && this.rigs.includes(fromX))) {
+                console.warn(`PipeNetworkManager: 首次建管必须从井架格（顶行井架所在列）开始`);
                 return false;
             }
             fromNode = this._createNode(fromX, fromY);
@@ -232,8 +243,8 @@ export class PipeNetworkManager {
 
         while (head < queue.length) {
             const current = queue[head++];
-            // 只有井架所在格才是有效的地表出口（其余顶行格不作为抽油出口）
-            if (current.gridY === 0 && current.gridX === this.rigX) {
+            // 任一井架所在格都是有效的地表出口
+            if (current.gridY === 0 && this.rigs.includes(current.gridX)) {
                 surface = current;
                 break;
             }

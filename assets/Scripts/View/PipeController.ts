@@ -156,22 +156,23 @@ export class PipeController extends Component {
         // 井架放置：点击目录「钻井」进入待放置态后，点顶行格完成放置
         if (this.pendingRig) {
             if (gridY === 0 && this._pipeMgr) {
-                this._pipeMgr.rigX = gridX;
-                this.pendingRig = false;
-                this._lastGridX = gridX;
-                this._lastGridY = 0;
+                if (this._pipeMgr.placeRig(gridX)) {
+                    this.pendingRig = false;
+                    this._lastGridX = gridX;
+                    this._lastGridY = 0;
+                }
                 if (this._gridRenderer && this._gridMgr) {
-                    this._gridRenderer.renderGrid(this._gridMgr, this._pipeMgr.rigX);
+                    this._gridRenderer.renderGrid(this._gridMgr, this._pipeMgr.rigs);
                 }
             }
-            // 非顶行：保持待放置态，忽略本次点击
+            // 非顶行或该列已有井架：保持待放置态
             return;
         }
 
         // 起笔合法性：井架基座，或管网中已完工的节点；'building' 施工中节点不能作为分支起点
         let canStart = false;
         if (this._pipeMgr) {
-            const isRigBase = gridX === this._pipeMgr.rigX && gridY === 0;
+            const isRigBase = gridY === 0 && this._pipeMgr.hasRig(gridX);
             const isDoneNode = this._pipeMgr.getNode(gridX, gridY)?.status === 'done';
             canStart = isRigBase || isDoneNode;
         }
@@ -239,7 +240,7 @@ export class PipeController extends Component {
         this.renderPipes();
         // 建管成功后刷新迷雾视野（与 renderPipes 一样每帧只刷一次，避免逐格重绘 800 格）
         if (this._gridRenderer && this._gridMgr && this._pipeMgr) {
-            this._gridRenderer.renderGrid(this._gridMgr, this._pipeMgr.rigX);
+            this._gridRenderer.renderGrid(this._gridMgr, this._pipeMgr.rigs);
         }
     }
 
@@ -339,7 +340,7 @@ export class PipeController extends Component {
 
         // 工具揭示/清除了地块，重绘网格
         if (this._gridRenderer && this._gridMgr && this._pipeMgr) {
-            this._gridRenderer.renderGrid(this._gridMgr, this._pipeMgr.rigX);
+            this._gridRenderer.renderGrid(this._gridMgr, this._pipeMgr.rigs);
         }
     }
 

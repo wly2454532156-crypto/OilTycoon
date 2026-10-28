@@ -17,7 +17,7 @@ export class GridRenderer extends Component {
     @property
     cellSize = 20;
 
-    renderGrid(gridManager: GridManager, rigX: number): void {
+    renderGrid(gridManager: GridManager, rigs: number[]): void {
         const graphics = this.getComponent(Graphics);
         if (!graphics) {
             console.warn('GridRenderer: 节点上缺少 Graphics 组件');
@@ -47,10 +47,10 @@ export class GridRenderer extends Component {
             }
         }
 
-        // 井架标记：1 格宽、2 格高，底边贴地表、正对 rigX 列，与起笔点对齐
-        if (rigX >= 0) {
+        // 井架标记：每口井架 1 格宽、2 格高，底边贴地表、正对其所在列
+        for (const rx of rigs) {
             graphics.fillColor = COLOR_RIG;
-            graphics.rect(rigX * this.cellSize, 0, this.cellSize, this.cellSize * 2);
+            graphics.rect(rx * this.cellSize, 0, this.cellSize, this.cellSize * 2);
             graphics.fill();
         }
     }

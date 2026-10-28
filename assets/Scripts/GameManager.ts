@@ -120,6 +120,13 @@ export class GameManager extends Component {
 
         const extracted = this.pipeMgr.calculateFlow(this.gridMgr);
 
+        // 气藏燃烧罚款（calculateFlow 内部已在燃烧时停工并累积罚款）
+        const burnPenalty = this.pipeMgr.consumeBurnPenalty();
+        if (burnPenalty > 0) {
+            this.economy.payCost(burnPenalty);
+            console.warn(`💥 气藏燃烧！损失 $${burnPenalty}，停工中...`);
+        }
+
         // 立刻刷新管道内石油流动表现
         if (this.pipeController) {
             this.pipeController.renderPipes();
@@ -147,7 +154,7 @@ export class GameManager extends Component {
         }
 
         console.log(
-            `[Tick ${this.tickCounter}] 油价 L=$${this.market.leftCompanyPrice.toFixed(2)} R=$${this.market.rightCompanyPrice.toFixed(2)} | 抽出 ${extracted} | 库存 ${this.economy.surfaceBuffer} | 余额 $${this.economy.wallet.balance.toFixed(2)} | 马车活跃 ${this.wagonMgr.activeWagonCount}/${this.wagonMgr.wagons.length}`,
+            `[Tick ${this.tickCounter}] 油价 L=$${this.market.leftCompanyPrice.toFixed(2)} R=$${this.market.rightCompanyPrice.toFixed(2)} | 抽出 ${extracted} | 气体 ${this.pipeMgr.gasLevel}${this.pipeMgr.isBurning ? ' 🔥燃烧中' : ''} | 库存 ${this.economy.surfaceBuffer} | 余额 $${this.economy.wallet.balance.toFixed(2)} | 马车活跃 ${this.wagonMgr.activeWagonCount}/${this.wagonMgr.wagons.length}`,
         );
 
         if (this.uiPanel) {

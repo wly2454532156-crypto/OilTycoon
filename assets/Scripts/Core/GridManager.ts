@@ -28,6 +28,8 @@ export interface GridGenParams {
     hardnessGas?: number;
     rockPBase?: number;
     rockWDepth?: number;
+    gasPBase?: number;
+    gasWDepth?: number;
 }
 
 export class GridManager {
@@ -49,6 +51,8 @@ export class GridManager {
 
     private _rockPBase = 0.05;
     private _rockWDepth = 0.35;
+    private _gasPBase = 0.15;
+    private _gasWDepth = 0.25;
 
     constructor(width: number, height: number, params?: GridGenParams) {
         this._width = width;
@@ -66,6 +70,8 @@ export class GridManager {
             this._hardnessGas = params.hardnessGas ?? this._hardnessGas;
             this._rockPBase = params.rockPBase ?? this._rockPBase;
             this._rockWDepth = params.rockWDepth ?? this._rockWDepth;
+            this._gasPBase = params.gasPBase ?? this._gasPBase;
+            this._gasWDepth = params.gasWDepth ?? this._gasWDepth;
         }
     }
 
@@ -126,6 +132,13 @@ export class GridManager {
             rock = this._smooth(rock);
         }
 
+        // 气藏层独立生成，合并优先级：油 > 气 > 岩石
+        let gas = this._generateSeed(this._gasPBase, this._gasWDepth);
+        for (let i = 0; i < this._smoothingIterations; i++) {
+            gas = this._smooth(gas);
+        }
+        this._removeSmallClusters(gas, 3);
+
         this._grid = [];
         for (let y = 0; y < this._height; y++) {
             this._grid[y] = [];
@@ -138,6 +151,9 @@ export class GridManager {
                     type = BlockType.Oil;
                     hardness = this._hardnessOil;
                     capacity = this._capacityBase + edgeDist[y][x] * this._capacityMultiplier;
+                } else if (gas[y][x]) {
+                    type = BlockType.Gas;
+                    hardness = this._hardnessGas;
                 } else if (rock[y][x]) {
                     type = BlockType.Rock;
                     hardness = this._hardnessRock;

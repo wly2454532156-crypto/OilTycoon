@@ -258,11 +258,13 @@ $L$ 为新增网格长度，$B$ 为分支节点数。对分叉接头收取额外
 *   **交互（原型）**：升级暂用键盘 `C`=容量、`V`=速度；点击版升级面板留到后续（工具栏单行放不下）。
 *   验收：可连续买马车；升级后单趟运量/速度可感知变化。
 
-### Phase 3：气体系统（Gas 生成 + 溢出/燃烧）
+### Phase 3：气体系统（Gas 生成 + 溢出/燃烧）（2026-10-28 完成）
 
-*   `GridManager` 产出 `BlockType.Gas`（独立种子，优先级低于 Oil、高于 Rock）。
-*   管道接触 Gas 时累积 `gasLevel`，超阈值触发燃烧（扣钱 / 停工一段时间）；对标 Turmoil `GasSupply` + `OnOilBurningStarted`。
-*   验收：气藏可见，钻到气有燃烧风险反馈。
+*   **气藏生成**：`GridManager` 产出 `BlockType.Gas`（独立种子 `gasPBase=0.15 / gasWDepth=0.25`，2 轮平滑 + 去 <3 小簇），合并优先级 **油 > 气 > 岩石**。渲染为浅蓝色（`COLOR_GAS`）。
+*   **气体累积**：`PipeNetworkManager.calculateFlow()` 检测到已完工管道接触 `Gas` 格时，每格每 tick 累积 15（`gasPerNode`），不产油；无接触时每 tick 消散 8（`gasDecay`）。
+*   **燃烧触发**：`gasLevel ≥ 100`（`gasThreshold`）时触发——清零气量、进入 `isBurning` 停工 6 tick（3 秒，期间 `calculateFlow` 直接返回 0 停抽）、累积 $200 罚款（`consumeBurnPenalty()` 由 `GameManager` 扣款）。
+*   对标 Turmoil `GasSupply` + `OnOilBurningStarted`。
+*   验收：`debugRevealAll` 全开迷雾可见浅蓝气藏；钻到气后 tick 日志出现「气体 N」、超阈后「💥 气藏燃烧」+ 停工。
 
 ### Phase 4：钻头科技 + 硬岩分级
 

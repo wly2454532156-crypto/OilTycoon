@@ -22,6 +22,17 @@ export class PipeNetworkManager {
     // 井架所在列（gridY=0）。-1 表示尚未放置井架，此时无有效管道起点与抽油出口。
     rigX = -1;
 
+    // 气体系统（Phase 3）
+    gasLevel = 0;                 // 当前累积气体
+    isBurning = false;            // 是否在燃烧停工
+    burnTicksLeft = 0;            // 剩余停工 tick 数
+    private _pendingBurnPenalty = 0;
+    private readonly gasThreshold = 100;
+    private readonly gasPerNode = 15;
+    private readonly gasDecay = 8;
+    private readonly burnDurationTicks = 6;
+    private readonly burnPenaltyCost = 200;
+
     private readonly baseBuildCost = 5;
     private readonly branchExtraCost = 15;
     private readonly drillSpeed = 1;
@@ -113,14 +124,32 @@ export class PipeNetworkManager {
             node.flowTarget = '';
         }
 
+        // 燃烧停工期间停止抽油
+        if (this.isBurning) {
+            this.burnTicksLeft--;
+            if (this.burnTicksLeft <= 0) {
+                this.isBurning = false;
+            }
+            return 0;
+        }
+
         let totalExtracted = 0;
+        let gasTouched = 0;
 
         for (const node of this.nodes.values()) {
             // 施工中的管道不能传输石油
             if (node.status !== 'done') continue;
 
             const block = gridMgr.getBlock(node.gridX, node.gridY);
-            if (!block || block.type !== BlockType.Oil || block.resourceCapacity <= 0) {
+            if (!block) continue;
+
+            // 接触气藏：累积气体，不产油
+            if (block.type === BlockType.Gas) {
+                gasTouched += this.gasPerNode;
+                continue;
+            }
+
+            if (block.type !== BlockType.Oil || block.resourceCapacity <= 0) {
                 continue;
             }
 
@@ -146,7 +175,27 @@ export class PipeNetworkManager {
             }
         }
 
+        // 气体累积/消散与燃烧判定
+        if (gasTouched > 0) {
+            this.gasLevel += gasTouched;
+            if (this.gasLevel >= this.gasThreshold) {
+                this.gasLevel = 0;
+                this.isBurning = true;
+                this.burnTicksLeft = this.burnDurationTicks;
+                this._pendingBurnPenalty += this.burnPenaltyCost;
+            }
+        } else if (this.gasLevel > 0) {
+            this.gasLevel = Math.max(0, this.gasLevel - this.gasDecay);
+        }
+
         return totalExtracted;
+    }
+
+    // 读取并清除待处理的燃烧罚款（由 GameManager 通过 economy 扣款）
+    consumeBurnPenalty(): number {
+        const p = this._pendingBurnPenalty;
+        this._pendingBurnPenalty = 0;
+        return p;
     }
 
     updateDrills(dt: number, gridMgr: GridManager): boolean {

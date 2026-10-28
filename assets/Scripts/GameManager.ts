@@ -63,7 +63,7 @@ export class GameManager extends Component {
     }
 
     start(): void {
-        console.log('🎮 操作：点地表油迹放井架 → 按住往下拖钻管；按 B=买Silo  1=卖左  2=卖右');
+        console.log('🎮 操作：底部目录点选设施/工具；键盘 B=Silo  C=马车容量  V=马车速度  1=卖左  2=卖右');
 
         this.gridMgr = new GridManager(this.gridWidth, this.gridHeight);
         this.gridMgr.generate();
@@ -183,6 +183,12 @@ export class GameManager extends Component {
         switch (event.keyCode) {
             case KeyCode.KEY_B:
                 this.economy.buySilo();
+                break;
+            case KeyCode.KEY_C:
+                this.wagonMgr.buyWagonCapacityUpgrade(this.economy);
+                break;
+            case KeyCode.KEY_V:
+                this.wagonMgr.buyWagonSpeedUpgrade(this.economy);
                 break;
             case KeyCode.DIGIT_1:
                 this.wagonMgr.dispatchSell('left', this.economy);

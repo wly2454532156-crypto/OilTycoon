@@ -13,9 +13,9 @@ const COLOR_SELECTED = new Color('#FFD24D');
 const COLOR_MESSAGE = new Color('#FFE08A');
 const COLOR_PANEL_BG = new Color(0, 0, 0, 160);
 
-const BTN_W = 100;
+const BTN_W = 90;
 const BTN_H = 46;
-const BTN_GAP = 8;
+const BTN_GAP = 6;
 const PAD = 12;
 
 @ccclass('ToolPanel')
@@ -126,6 +126,9 @@ export class ToolPanel extends Component {
                     break;
                 case ToolType.Silo:
                     this._economy.buySilo();
+                    break;
+                case ToolType.SuperSilo:
+                    this._economy.buySuperSilo();
                     break;
                 case ToolType.Wagon:
                     if (this._wagonMgr) this._wagonMgr.buyWagon(this._economy);

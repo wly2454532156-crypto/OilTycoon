@@ -22,10 +22,16 @@ export interface Wagon {
 export class WagonManager {
     readonly wagons: Wagon[] = [];
 
-    private readonly wagonCount = 3;
-    private readonly wagonCapacity = 20;
-    private readonly wagonSpeed = 10;
+    private readonly wagonCount = 1;
+    private wagonCapacity = 20;
+    private wagonSpeed = 10;
     private readonly companyDistance = 100;
+
+    // 升级成本与效果（后续接入科技树 UI）
+    private readonly capacityUpgradeCost = 100;
+    private readonly capacityUpgradeAmount = 10;
+    private readonly speedUpgradeCost = 100;
+    private readonly speedUpgradeAmount = 5;
 
     constructor() {
         for (let i = 0; i < this.wagonCount; i++) {
@@ -38,6 +44,24 @@ export class WagonManager {
         if (economy.wallet.balance < price) return false;
         economy.payCost(price);
         this.wagons.push(this._createWagon(this.wagons.length));
+        return true;
+    }
+
+    // 升级马车容量：对所有现有马车生效
+    buyWagonCapacityUpgrade(economy: EconomyManager): boolean {
+        if (economy.wallet.balance < this.capacityUpgradeCost) return false;
+        economy.payCost(this.capacityUpgradeCost);
+        this.wagonCapacity += this.capacityUpgradeAmount;
+        for (const w of this.wagons) w.capacity = this.wagonCapacity;
+        return true;
+    }
+
+    // 升级马车速度：对所有现有马车生效
+    buyWagonSpeedUpgrade(economy: EconomyManager): boolean {
+        if (economy.wallet.balance < this.speedUpgradeCost) return false;
+        economy.payCost(this.speedUpgradeCost);
+        this.wagonSpeed += this.speedUpgradeAmount;
+        for (const w of this.wagons) w.speed = this.wagonSpeed;
         return true;
     }
 

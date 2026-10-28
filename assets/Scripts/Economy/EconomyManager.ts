@@ -20,6 +20,7 @@ export class EconomyManager {
     private readonly spillageRate = 10;
 
     private readonly siloCapacityBonus = 50;
+    private readonly superSiloCapacityBonus = 100;
 
     buyRig(): boolean {
         const price = getToolDef(ToolType.Rig).price;
@@ -33,6 +34,15 @@ export class EconomyManager {
         if (!this.canAfford(price)) return false;
         this.payCost(price);
         this.bufferCapacity += this.siloCapacityBonus;
+        return true;
+    }
+
+    // 超级油罐：Silo 之外的第二级储油
+    buySuperSilo(): boolean {
+        const price = getToolDef(ToolType.SuperSilo).price;
+        if (!this.canAfford(price)) return false;
+        this.payCost(price);
+        this.bufferCapacity += this.superSiloCapacityBonus;
         return true;
     }
 

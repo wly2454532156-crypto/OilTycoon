@@ -250,10 +250,12 @@ $L$ 为新增网格长度，$B$ 为分支节点数。对分叉接头收取额外
 *   买 Wagon 后马车数 +1（`WagonManager.wagons` 长度增加），买 Silo 后 `bufferCapacity` +50。
 *   键盘 B/1/2 快捷方式移除或保留为调试，不再作为主交互。
 
-### Phase 2：储油升级链 + 马车购买/升级
+### Phase 2：储油升级链 + 马车购买/升级（2026-10-28 完成）
 
-*   **SuperSilo**：新增 `buySuperSilo()`（$500，+100 上限），Silo 之外的第二级储油。
-*   **马车不再是写死 3 辆**：`WagonManager` 初始 1 辆，`buyWagon()` 增加；新增 `wagonCapacity` / `wagonSpeed` 升级（`TechTree` 落地）。
+*   **SuperSilo**：`buySuperSilo()`（$500，+100 上限），目录新增「超级油罐」按钮，Silo 之外的第二级储油。
+*   **马车初始 1 辆**：`wagonCount = 1`（不再写死 3 辆），`buyWagon()`（$150）继续买。
+*   **马车升级**：`buyWagonCapacityUpgrade()`（$100，+10/级）、`buyWagonSpeedUpgrade()`（$100，+5/级），对所有现有马车生效。
+*   **交互（原型）**：升级暂用键盘 `C`=容量、`V`=速度；点击版升级面板留到后续（工具栏单行放不下）。
 *   验收：可连续买马车；升级后单趟运量/速度可感知变化。
 
 ### Phase 3：气体系统（Gas 生成 + 溢出/燃烧）

@@ -85,4 +85,9 @@ export class EconomyManager {
         this.wallet.totalEarned += revenue;
         return revenue;
     }
+
+    addRevenue(amount: number): void {
+        this.wallet.balance += amount;
+        this.wallet.totalEarned += amount;
+    }
 }

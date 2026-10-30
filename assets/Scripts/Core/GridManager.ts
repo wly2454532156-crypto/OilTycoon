@@ -53,6 +53,7 @@ export class GridManager {
     private _rockWDepth = 0.35;
     private _gasPBase = 0.15;
     private _gasWDepth = 0.25;
+    private _gasCapacityBase = 80;
 
     constructor(width: number, height: number, params?: GridGenParams) {
         this._width = width;
@@ -154,6 +155,7 @@ export class GridManager {
                 } else if (gas[y][x]) {
                     type = BlockType.Gas;
                     hardness = this._hardnessGas;
+                    capacity = this._gasCapacityBase;
                 } else if (rock[y][x]) {
                     type = BlockType.Rock;
                     // 深层岩石为硬岩档（2 倍硬度，钻透更慢）

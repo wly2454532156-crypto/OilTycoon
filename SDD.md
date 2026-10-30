@@ -355,3 +355,24 @@ $L$ 为新增网格长度，$B$ 为分支节点数。对分叉接头收取额外
 ### 11.3 验收标准
 *   点「卖左」后空闲马车只卖左，左价随卖出量下压、右价回涨；切「自动」恢复高价侧。
 *   手动键盘 1/2 仍可一次性覆盖派送。
+
+## 12. Phase 11：卖气收益（2026-10-30）
+
+> 现状：气藏是「无限源」——钻到后 `gasPerNode` 每 tick 固定累加、永不枯竭，一旦气量 ≥ 100 就燃烧扣款，形成「永久燃烧循环」。且气体纯是惩罚。对齐 Turmoil（`CompanyGasSellFactor`、`GasSupply`），把气藏改成有限储量 + 可卖收益，燃烧从「必然」变「你不卖的后果」。
+
+### 12.1 气藏有限化（`GridManager`）
+*   新增 `_gasCapacityBase = 80`，生成时给 `BlockType.Gas` 格设 `resourceCapacity = 80`（原来为 0），气格像油格一样可枯竭。
+
+### 12.2 气体抽取 + 卖气（`PipeNetworkManager`）
+*   `calculateFlow` 气体分支改为「按储量抽取」：`extract = min(gasPerNode, resourceCapacity)`，扣储量、累加 `gasTouched`。枯竭后不再贡献。
+*   新增 `gasPrice = 3`、`getGasSaleValue()`、`sellGas(economy)`：卖出当前 `gasLevel × gasPrice` 并清零。
+*   调参：`gasThreshold 100→200`（更多缓冲）、`gasPerNode 15→10`（更慢累积，给反应时间）。
+
+### 12.3 卖气入口（`EconomyManager` / `ToolPanel` / `GameManager`）
+*   `EconomyManager.addRevenue(amount)`：入账 + 累计营收。
+*   `ToolPanel` 方向行新增第 4 键「卖气」，`refresh()` 显示 `卖气 $X`（X = 当前可卖金额），点击 `sellGas`。
+*   `GameManager` 键盘 `G` = 卖气（调试）。
+
+### 12.4 验收标准
+*   钻到气藏后气格会枯竭（不再永久燃烧）；气量缓涨，点「卖气」入账并清零；若放任气量 ≥ 200 仍会燃烧扣款。
+*   气藏从「纯惩罚」变成「卖则赚、不管则烧」的取舍。

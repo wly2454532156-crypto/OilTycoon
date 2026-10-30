@@ -207,6 +207,9 @@ export class GameManager extends Component {
             case KeyCode.KEY_D:
                 this.pipeMgr.upgradeDrillSpeed(this.economy);
                 break;
+            case KeyCode.KEY_G:
+                this.pipeMgr.sellGas(this.economy);
+                break;
             case KeyCode.DIGIT_1:
                 this.wagonMgr.dispatchSell('left', this.economy);
                 break;

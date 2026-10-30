@@ -38,11 +38,12 @@ export class PipeNetworkManager {
     isBurning = false;            // 是否在燃烧停工
     burnTicksLeft = 0;            // 剩余停工 tick 数
     private _pendingBurnPenalty = 0;
-    private readonly gasThreshold = 100;
-    private readonly gasPerNode = 15;
+    private readonly gasThreshold = 200;
+    private readonly gasPerNode = 10;
     private readonly gasDecay = 8;
     private readonly burnDurationTicks = 6;
     private readonly burnPenaltyCost = 200;
+    private readonly gasPrice = 3;
 
     private readonly baseBuildCost = 5;
     private readonly branchExtraCost = 15;
@@ -152,9 +153,13 @@ export class PipeNetworkManager {
             const block = gridMgr.getBlock(node.gridX, node.gridY);
             if (!block) continue;
 
-            // 接触气藏：累积气体，不产油
+            // 接触气藏：按储量抽取气体（有限，可枯竭），不产油
             if (block.type === BlockType.Gas) {
-                gasTouched += this.gasPerNode;
+                if (block.resourceCapacity > 0) {
+                    const extract = Math.min(this.gasPerNode, block.resourceCapacity);
+                    block.resourceCapacity -= extract;
+                    gasTouched += extract;
+                }
                 continue;
             }
 
@@ -224,6 +229,20 @@ export class PipeNetworkManager {
         const p = this._pendingBurnPenalty;
         this._pendingBurnPenalty = 0;
         return p;
+    }
+
+    // 当前可卖气体金额（卖气按钮显示用）
+    getGasSaleValue(): number {
+        return this.gasLevel * this.gasPrice;
+    }
+
+    // 卖气：入账并清零气量，返回收益
+    sellGas(economy: EconomyManager): number {
+        const revenue = this.getGasSaleValue();
+        if (revenue <= 0) return 0;
+        this.gasLevel = 0;
+        economy.addRevenue(revenue);
+        return revenue;
     }
 
     // 升级钻头：钻速等级 +1（钻透时间按等级递减）

@@ -27,6 +27,7 @@ export class ToolPanel extends Component {
 
     private _entries: { def: ToolDef; label: Label }[] = [];
     private _modeButtons: { mode: 'left' | 'right' | 'auto'; label: Label }[] = [];
+    private _gasButtonLabel: Label | null = null;
     private _messageLabel: Label | null = null;
     private _messageTicks = 0;
 
@@ -46,6 +47,10 @@ export class ToolPanel extends Component {
         }
         for (const mb of this._modeButtons) {
             mb.label.color = this._wagonMgr && this._wagonMgr.sellMode === mb.mode ? COLOR_SELECTED : COLOR_NORMAL;
+        }
+        if (this._gasButtonLabel && this._pipeMgr) {
+            const value = this._pipeMgr.getGasSaleValue();
+            this._gasButtonLabel.string = value > 0 ? `卖气 $${Math.floor(value)}` : '卖气';
         }
         // 工具反馈消息：显示约 2 秒后清除
         if (this._messageLabel && this._pipeController && this._pipeController.lastToolMessage) {
@@ -93,13 +98,14 @@ export class ToolPanel extends Component {
             node.on(Node.EventType.TOUCH_END, () => this._onClick(type), this);
         }
 
-        // 卖油方向行（居中 3 键：卖左 / 自动 / 卖右）
+        // 卖油方向行（3 键：卖左 / 自动 / 卖右）+ 卖气（第 4 键）
         const modes: Array<{ mode: 'left' | 'right' | 'auto'; text: string }> = [
             { mode: 'left', text: '卖左' },
             { mode: 'auto', text: '自动' },
             { mode: 'right', text: '卖右' },
         ];
-        const modeRowW = modes.length * BTN_W + (modes.length - 1) * BTN_GAP;
+        const rowButtons = modes.length + 1;
+        const modeRowW = rowButtons * BTN_W + (rowButtons - 1) * BTN_GAP;
         let mx = -modeRowW / 2 + BTN_W / 2;
         for (const m of modes) {
             const node = new Node(`mode_${m.mode}`);
@@ -118,6 +124,22 @@ export class ToolPanel extends Component {
             this._modeButtons.push({ mode: m.mode, label });
             node.on(Node.EventType.TOUCH_END, () => this._onModeClick(m.mode), this);
         }
+
+        // 卖气按钮（显示当前可卖金额）
+        const gasNode = new Node('gas');
+        gasNode.layer = this.node.layer;
+        gasNode.addComponent(UITransform).setContentSize(BTN_W, BTN_H);
+        const gasLabel = gasNode.addComponent(Label);
+        gasLabel.string = '卖气';
+        gasLabel.fontSize = 14;
+        gasLabel.lineHeight = 20;
+        gasLabel.color = Color.WHITE;
+        gasLabel.horizontalAlign = Label.HorizontalAlign.CENTER;
+        gasLabel.verticalAlign = Label.VerticalAlign.CENTER;
+        this.node.addChild(gasNode);
+        gasNode.setPosition(mx, -rowY, 0);
+        this._gasButtonLabel = gasLabel;
+        gasNode.on(Node.EventType.TOUCH_END, () => this._onSellGas(), this);
 
         // 工具反馈消息标签（工具栏上方）
         const msgNode = new Node('message');
@@ -176,6 +198,16 @@ export class ToolPanel extends Component {
     private _onModeClick(mode: 'left' | 'right' | 'auto'): void {
         if (this._wagonMgr) {
             this._wagonMgr.setSellMode(mode);
+        }
+        this.refresh();
+    }
+
+    private _onSellGas(): void {
+        if (this._pipeMgr && this._economy) {
+            const revenue = this._pipeMgr.sellGas(this._economy);
+            if (revenue > 0 && this._pipeController) {
+                this._pipeController.lastToolMessage = `卖气 +$${Math.floor(revenue)}`;
+            }
         }
         this.refresh();
     }

@@ -337,7 +337,7 @@ $L$ 为新增网格长度，$B$ 为分支节点数。对分叉接头收取额外
 
 ### 10.11 后续路线图（不在本批次）
 *   ~~Phase 10：马车左右分配 UI~~ → 见 §11（已完成）。
-*   ~~Phase 11：卖气收益~~ → 见 §12（已完成；炼油厂产 petrol 留后续）。
+*   ~~Phase 11：卖气收益~~ → 见 §12（已完成）；炼油厂产 petrol → 暂缓（平衡顾虑，2026-10-30）。
 *   Phase 12a：贷款 → 见 §13（本次）；Phase 12b：关卡间元进度（Turmoil campaign、tenants）留后续。
 *   Phase 13：对手 AI + 土地拍卖（Turmoil `NumPlayers=4`、`aiconfig_turmoil_expert`、`EstateBidPrice`）。
 

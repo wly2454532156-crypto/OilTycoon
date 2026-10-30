@@ -302,7 +302,7 @@
     "__prefab": null,
     "gridWidth": 40,
     "gridHeight": 20,
-    "debugRevealAll": false,
+    "debugRevealAll": true,
     "gridRenderer": {
       "__id__": 8
     },
@@ -1427,8 +1427,8 @@
     "__prefab": null,
     "_contentSize": {
       "__type__": "cc.Size",
-      "width": 1334,
-      "height": 750
+      "width": 800,
+      "height": 800
     },
     "_anchorPoint": {
       "__type__": "cc.Vec2",

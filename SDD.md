@@ -337,7 +337,7 @@ $L$ 为新增网格长度，$B$ 为分支节点数。对分叉接头收取额外
 
 ### 10.11 后续路线图（不在本批次）
 *   ~~Phase 10：马车左右分配 UI~~ → 见 §11（已完成）。
-*   ~~Phase 11：卖气收益~~ → 见 §12（已完成；炼油厂产 petrol 留后续）。
+*   ~~Phase 11：卖气收益~~ → 见 §12（已完成）；炼油厂产 petrol → 见 §14。
 *   Phase 12a：贷款 → 见 §13（本次）；Phase 12b：关卡间元进度（Turmoil campaign、tenants）留后续。
 *   Phase 13：对手 AI + 土地拍卖（Turmoil `NumPlayers=4`、`aiconfig_turmoil_expert`、`EstateBidPrice`）。
 
@@ -390,3 +390,21 @@ $L$ 为新增网格长度，$B$ 为分支节点数。对分叉接头收取额外
 ### 13.3 验收标准
 *   按 L 借 $500、余额 +$500、负债 +$500；负债每 tick 微涨；按 R 还款；到点未还债务从余额扣除后再判胜负。
 *   点击版贷款/还款按钮 + 负债显示 UI 留后续。
+
+## 14. Phase 11b：炼油厂产 petrol（2026-10-30）
+
+> 对齐 Turmoil `RefineryPetrolProduction` / `ConvertSiloToRefinery`。炼油厂把油精炼成更高价值的 petrol（自动卖，无需马车），是「资源深加工」线，与 §12 卖气同属。
+
+### 14.1 设施目录（`ToolCatalog`）
+*   新增 `ToolType.Refinery`，`{ 炼油厂, $500, facility }`。
+
+### 14.2 炼油逻辑（`EconomyManager`）
+*   新增 `refineryOwned`、`buyRefinery()`（$500，一次性）、`tickRefinery()`：每 tick 把 `min(refineryRate=3, surfaceBuffer)` 油转为 petrol 并即时卖出，`petrolPrice=3`（高于油 ~$1.3），`addRevenue`。
+
+### 14.3 接入（`GameManager` / `ToolPanel`）
+*   `tick()` 在 `addOilToBuffer` 后调 `tickRefinery()`（炼油优先于马车卖油，petrol 更值钱）。
+*   `ToolPanel` 设施分支加 `case ToolType.Refinery`。
+
+### 14.4 验收标准
+*   买炼油厂后，每 tick 有油时自动精炼并即时卖 petrol（收益高于直接卖油）；余额增长明显快于无炼油厂。
+*   工具栏第 9 键「炼油厂」可购买；布局变宽需后续 UI 精简。

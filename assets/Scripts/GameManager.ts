@@ -134,6 +134,7 @@ export class GameManager extends Component {
         }
 
         this.economy.addOilToBuffer(extracted);
+        this.economy.tickRefinery();
 
         this.wagonMgr.updateWagons(this.economy, this.market);
 

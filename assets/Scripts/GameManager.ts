@@ -12,7 +12,6 @@ import { WagonRenderer } from './View/WagonRenderer';
 import { ToolPanel } from './View/ToolPanel';
 import { RecapPanel } from './View/RecapPanel';
 import { CompanyPanel } from './View/CompanyPanel';
-import { SkyRenderer } from './View/SkyRenderer';
 
 const { ccclass, property } = _decorator;
 
@@ -86,7 +85,6 @@ export class GameManager extends Component {
 
         // 布局：Grid/Pipe/Wagon 节点归到画布中心，渲染用 Layout 绝对坐标（SDD §14.4）
         this._layoutNodes();
-        this._createSky();
 
         // 井架改为玩家自由选址（见 PipeController.onTouchStart），此处不再自动放置
         if (this.gridRenderer) {
@@ -125,18 +123,6 @@ export class GameManager extends Component {
             if (ut) ut.setAnchorPoint(0.5, 0.5);
             node.setPosition(0, 0, 0);
         }
-    }
-
-    // 天空背景（最底层，浅色渐变让马车/文字可见）
-    private _createSky(): void {
-        const canvas = this.node.parent;
-        if (!canvas) return;
-        const skyNode = new Node('Sky');
-        skyNode.layer = Layers.Enum.UI_2D;
-        skyNode.addComponent(SkyRenderer);
-        canvas.addChild(skyNode);
-        skyNode.setSiblingIndex(0);
-        skyNode.setPosition(0, 0, 0);
     }
 
     update(deltaTime: number): void {

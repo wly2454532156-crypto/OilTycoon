@@ -9,22 +9,41 @@ export class MarketManager implements MarketState {
     rightCompanyPrice = 1.0;
     priceTickCounter = 0;
 
-    private readonly basePrice = 1.0;
+    private readonly basePrice = 1.3;
     private readonly amplitude = 0.5;
     private readonly omega = 0.1;
     private readonly randomAmplitude = 0.1;
     private readonly leftPhase = 0;
     private readonly rightPhase = Math.PI / 2;
 
+    // 供需反馈（SDD 4.3）：卖出越多，该侧价格越被压低，随时间缓慢恢复
+    private leftSellPressure = 0;
+    private rightSellPressure = 0;
+    private readonly sellPressurePerUnit = 0.006;
+    private readonly sellPressureDecay = 0.97;
+    private readonly minPriceFactor = 0.82;
+
     updatePrice(tickCounter: number): void {
         this.priceTickCounter = tickCounter;
-        this.leftCompanyPrice = this._compute(tickCounter, this.leftPhase);
-        this.rightCompanyPrice = this._compute(tickCounter, this.rightPhase);
+        this.leftSellPressure *= this.sellPressureDecay;
+        this.rightSellPressure *= this.sellPressureDecay;
+        this.leftCompanyPrice = this._compute(tickCounter, this.leftPhase, this.leftSellPressure);
+        this.rightCompanyPrice = this._compute(tickCounter, this.rightPhase, this.rightSellPressure);
     }
 
-    private _compute(t: number, phase: number): number {
+    registerSell(side: 'left' | 'right', volume: number): void {
+        const delta = volume * this.sellPressurePerUnit;
+        if (side === 'left') {
+            this.leftSellPressure += delta;
+        } else {
+            this.rightSellPressure += delta;
+        }
+    }
+
+    private _compute(t: number, phase: number, sellPressure: number): number {
         const wave = this.amplitude * Math.sin(this.omega * t + phase);
         const noise = (Math.random() * 2 - 1) * this.randomAmplitude;
-        return this.basePrice + wave + noise;
+        const factor = Math.max(this.minPriceFactor, 1 - sellPressure);
+        return (this.basePrice + wave + noise) * factor;
     }
 }

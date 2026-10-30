@@ -23,8 +23,8 @@ export class WagonManager {
     readonly wagons: Wagon[] = [];
 
     private readonly wagonCount = 1;
-    private wagonCapacity = 20;
-    private wagonSpeed = 10;
+    private wagonCapacity = 30;
+    private wagonSpeed = 15;
     private readonly companyDistance = 100;
 
     // 升级成本与效果（后续接入科技树 UI）
@@ -117,7 +117,13 @@ export class WagonManager {
     }
 
     private _updateIdle(wagon: Wagon, economy: EconomyManager, market: MarketManager): void {
-        // 手动卖油：空闲马车不再自动出发，等待 dispatchSell 指令
+        // 自动卖油：空闲马车自动装油，卖到当前较高价侧（保留左右价差博弈）
+        if (economy.surfaceBuffer <= 0) return;
+        const side = market.leftCompanyPrice >= market.rightCompanyPrice ? 'left' : 'right';
+        wagon.targetSide = side;
+        wagon.currentLoad = Math.min(wagon.capacity, economy.surfaceBuffer);
+        economy.surfaceBuffer -= wagon.currentLoad;
+        wagon.state = WagonState.TO_COMPANY;
     }
 
     private _updateToCompany(wagon: Wagon): void {
@@ -128,8 +134,10 @@ export class WagonManager {
     }
 
     private _updateSelling(wagon: Wagon, economy: EconomyManager, market: MarketManager): void {
-        const price = wagon.targetSide === 'left' ? market.leftCompanyPrice : market.rightCompanyPrice;
+        const side = wagon.targetSide;
+        const price = side === 'left' ? market.leftCompanyPrice : market.rightCompanyPrice;
         economy.sellOil(wagon.currentLoad, price);
+        market.registerSell(side, wagon.currentLoad);
         wagon.currentLoad = 0;
         wagon.state = WagonState.TO_SILO;
     }

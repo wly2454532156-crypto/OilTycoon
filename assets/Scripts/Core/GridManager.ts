@@ -41,8 +41,8 @@ export class GridManager {
     private _wDepth = 0.35;
     private _smoothingIterations = 2;
     private _minClusterSize = 4;
-    private _capacityBase = 100;
-    private _capacityMultiplier = 20;
+    private _capacityBase = 200;
+    private _capacityMultiplier = 40;
 
     private _hardnessDirt = 1;
     private _hardnessRock = 8;
@@ -175,16 +175,16 @@ export class GridManager {
             }
         }
 
-        // 地表油迹提示：某列下方有油时，标记该列地表格，供玩家选址
+        // 地表油迹提示：仅当该列有「浅层油」（油顶 y<6）时标记，深层油需探测器/扫描仪/鼹鼠
         for (let x = 0; x < this._width; x++) {
-            let hasOilBelow = false;
+            let shallowOil = false;
             for (let y = 1; y < this._height; y++) {
                 if (this._grid[y][x].type === BlockType.Oil) {
-                    hasOilBelow = true;
+                    shallowOil = y < 6;
                     break;
                 }
             }
-            if (hasOilBelow && this._grid[0][x].type !== BlockType.Oil) {
+            if (shallowOil && this._grid[0][x].type !== BlockType.Oil) {
                 this._grid[0][x].isOilHint = true;
             }
         }

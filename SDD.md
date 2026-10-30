@@ -293,3 +293,50 @@ $L$ 为新增网格长度，$B$ 为分支节点数。对分叉接头收取额外
 *   **建管起点**：`buildPipe` 的「首次建管必须从井架」改为「从任一井架列（顶行）」；`_findPathToSurface` 的 BFS 出口改为「任一井架格」。
 *   **放置交互**：点「钻井」进入待放置态后，可连续在多个顶行格放置多口井（每口 $350）；`GridRenderer` 循环绘制所有井架。
 *   验收：可放多口井，每口井独立向下钻管、独立抽油（就近出口）。
+
+## 10. 经济链修复 + 并行钻探 + 小修（2026-10-30，对齐 Turmoil 实测值）
+
+> 400 局「理想操作」模拟：胜率 0%、净利 -$1165。根因：① 抽取（单油格 ~4/tick，井柱穿 2.5 格 ≈ 20/s）远快于运输（4 马车上限 8/s）；② 溢油罚 $10/桶 = 售价 10 倍；③ 油迹列储量中位 380 < 开发成本 445，57% 列亏钱；④ `updateDrills` 全局单队列串行钻探（5 井 = 95s）。对照解包 `Turmoil_Data/resources.assets`（定点 `rawValue/65536`）：`RigOilCapacity=559/井`、`SpillageFineInitial=$1000`+`SpillageFinePerUnit=$3`、`WagonsMin/Max=5/15`（自动 AI）、`OilSalePriceMin/Max=0.90/1.15`（供需驱动）。
+
+### 10.1 溢油罚款（对齐 Turmoil）
+*   `EconomyManager.spillageRate: 10 → 3`；新增 `spillageFineInitial = 1000` 与 `hasSpilledOnce` 标志：**首次溢油额外扣 $1,000，之后每桶 $3**。
+
+### 10.2 地表缓冲做大（蓄水池）
+*   `bufferCapacity: 50 → 500`；`siloCapacityBonus: 50 → 500`；`superSiloCapacityBonus: 100 → 1500`。缓冲做大后溢油从「常态」变「事故」。
+
+### 10.3 井口限流（对齐 Turmoil 管道总容量）
+*   `PipeNetworkManager.calculateFlow()` 改为**按地表井架分组**：各油格算 `pressure = capacity/50 + depth*0.1`，同井累加 `totalPressure`，该井 `totalFlow = min(totalPressure, pipeWidth × tech.pipeWidthLevel)`，再按各格 pressure 占比分配回扣储量。
+*   `pipeWidth: 5 → 3`（重定义为**每口井总流速上限** = 3/tick = 6/s，仍随科技等级放大）。气体检测保持逐格，不受限流影响。
+
+### 10.4 储量上调（解决回本）
+*   `GridManager.capacityBase: 100 → 200`、`capacityMultiplier: 20 → 40`，列中位 ~700-800 > 成本 445。
+
+### 10.5 马车自动化 + 基础增强
+*   `WagonManager._updateIdle`：空闲马车**自动装油卖到当前较高价侧**（保留左右价差博弈），无需手动按 1/2。
+*   基础增强：`wagonCapacity: 20 → 30`、`wagonSpeed: 10 → 15`（单辆 ≈ 4.5/s）。
+
+### 10.6 供需反馈油价（补 SDD 4.3）
+*   `MarketManager` 新增 `registerSell(side, volume)`：卖出累积每侧 `sellPressure`，每 tick `×0.97` 衰减；最终价 = 正弦波 × `clamp(1 - sellPressure, 0.82, 1)`。卖多压价、随时间恢复。
+*   **基准价 $1.0 → $1.3**：无头模拟证实 $1.0 在 120s 局内无论如何赢不了（即使供需温和也 0%），而 Turmoil 有效油价 = $0.90~1.15 × `OilSalePriceModifier 1.22` ≈ **$1.1~1.4**，$1.3 仍在区间内。
+
+### 10.7 并行钻探
+*   `PipeNetworkManager.updateDrills()` 改为**遍历 `activeDrills`，每个施工节点独立 `buildTimeLeft -= dt`**，完工置 `done` 并移除。纯泥土 19 格 ≈ 1s 钻完整列（每格 1s 并行），岩石 8s / 硬岩 16s 仍是慢钻，5 井并行。
+
+### 10.8 小修
+*   `GridManager`：`isOilHint` 只标**浅层油**（该列油顶 `y<6`），深层油需探测器/扫描仪/鼹鼠。
+*   `UIPanel`：`onLoad` 若 `dateLabel === null` 则运行时创建 Label（显示「第 X / 120 天」）；删除死代码 `showGameOver()`。
+*   `WagonRenderer`：马车纵向错开 `y = 10 + wagon.id * 30`。
+
+### 10.9 验收标准
+*   400 局理想模拟：胜率 > 50%、净利转正；溢油罚款「3 倍 + 一次性 $1,000」；单列油田零溢油全卖盈利。
+*   5 口井纯泥土 < 5s 钻完（而非 95s）；马车空闲即自动卖；油价随卖出量下压。
+*   无头模拟（理想操作）：基准价 $1.3 时「2 井 3 车」胜率 100%、终局均 $2615（净 +$115）；$1.0 时 0%。真实对局因迷雾/气藏/岩石/择时更严，理想胜率需 >50% 留余量。**已调常数**：`basePrice=1.3`、`minPriceFactor=0.82`、`sellPressurePerUnit=0.006`、`sellPressureDecay=0.97`、`pipeWidth=3`、`capacityBase=200`、`capacityMultiplier=40`、`spillageRate=3`+首次 `$1000`、`bufferCapacity=500`、马车 `30/15`。
+
+### 10.10 平衡模拟工具
+*   `tools/balance_sim.py`：无头复刻核心经济循环，`python tools/balance_sim.py --games N` 扫描井/车配比跑胜率。常数与 TS 代码一一对应，改 TS 时同步此处。
+
+### 10.11 后续路线图（不在本批次）
+*   Phase 10：马车左右分配 UI（Turmoil `tut_companywagon_assignment`）。
+*   Phase 11：卖气收益 / 炼油厂产 petrol（Turmoil `CompanyGasSellFactor=12`、`RefineryPetrolProduction`）。
+*   Phase 12：关卡间元进度 + 贷款（Turmoil campaign、tenants、`LoanUnitAmount=$500`）。
+*   Phase 13：对手 AI + 土地拍卖（Turmoil `NumPlayers=4`、`aiconfig_turmoil_expert`、`EstateBidPrice`）。

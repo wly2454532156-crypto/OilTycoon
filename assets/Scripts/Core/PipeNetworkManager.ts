@@ -1,4 +1,4 @@
-import { BlockType, GridManager } from './GridManager';
+import { BlockType, GridBlock, GridManager } from './GridManager';
 import { EconomyManager } from '../Economy/EconomyManager';
 
 export interface PipeNode {
@@ -49,8 +49,8 @@ export class PipeNetworkManager {
     private readonly drillSpeed = 1;
     private readonly drillUpgradeCost = 150;
 
-    // 管宽基准（Width_base）——上调到 5，使流速不被 1 掐死
-    private readonly pipeWidth = 5;
+    // 管宽基准（Width_base）——重定义为每口井（井架）总流速上限，对齐 Turmoil 管道总容量
+    private readonly pipeWidth = 3;
 
     // 科技等级（管宽 / 钻速）
     private tech = {
@@ -142,6 +142,9 @@ export class PipeNetworkManager {
         let totalExtracted = 0;
         let gasTouched = 0;
 
+        // 按地表井架分组累积油压，再按管宽限流（对齐 Turmoil：管道总容量限制整口井流速）
+        const wellSources = new Map<string, { node: PipeNode; block: GridBlock; pressure: number; path: PipeNode[] }[]>();
+
         for (const node of this.nodes.values()) {
             // 施工中的管道不能传输石油
             if (node.status !== 'done') continue;
@@ -160,23 +163,42 @@ export class PipeNetworkManager {
             }
 
             const path = this._findPathToSurface(node);
-            if (!path) continue;
+            if (!path || path.length === 0) continue;
 
             // 动态油压：储量越大、埋得越深，压力越强
             const pressure = (block.resourceCapacity / 50) + (node.gridY * 0.1);
-            // 实际流速受限于管宽科技
-            const actualFlow = Math.min(pressure, this.pipeWidth * this.tech.pipeWidthLevel);
+            const surfaceId = path[0].id;
+            const source = { node, block, pressure, path };
+            const list = wellSources.get(surfaceId);
+            if (list) {
+                list.push(source);
+            } else {
+                wellSources.set(surfaceId, [source]);
+            }
+        }
 
-            block.resourceCapacity -= actualFlow;
-            totalExtracted += actualFlow;
+        // 每口井总流速 = min(总油压, 管宽 × 科技等级)，再按各格油压占比分配
+        const wellCap = this.pipeWidth * this.tech.pipeWidthLevel;
+        for (const sources of wellSources.values()) {
+            const totalPressure = sources.reduce((sum, s) => sum + s.pressure, 0);
+            const totalFlow = Math.min(totalPressure, wellCap);
+            const scale = totalFlow > 0 ? totalFlow / totalPressure : 0;
 
-            // path 顺序为 [地表, ..., 油源]，石油从深处向地表流动
-            for (let i = 0; i < path.length; i++) {
-                const pathNode = path[i];
-                pathNode.isPumping = true;
-                pathNode.currentFlow += actualFlow;
-                if (i > 0) {
-                    pathNode.flowTarget = path[i - 1].id;
+            for (const s of sources) {
+                const actualFlow = s.pressure * scale;
+                if (actualFlow <= 0) continue;
+
+                s.block.resourceCapacity -= actualFlow;
+                totalExtracted += actualFlow;
+
+                // path 顺序为 [地表, ..., 油源]，石油从深处向地表流动
+                for (let i = 0; i < s.path.length; i++) {
+                    const pathNode = s.path[i];
+                    pathNode.isPumping = true;
+                    pathNode.currentFlow += actualFlow;
+                    if (i > 0) {
+                        pathNode.flowTarget = s.path[i - 1].id;
+                    }
                 }
             }
         }
@@ -214,21 +236,17 @@ export class PipeNetworkManager {
 
     updateDrills(dt: number, gridMgr: GridManager): boolean {
         let completed = false;
-        let remaining = dt;
-        // 顺序钻井：只有队首节点扣减耗时，完工后剩余时间顺延给下一节
-        while (remaining > 0 && this.activeDrills.length > 0) {
-            const node = this.activeDrills[0];
-            node.buildTimeLeft -= remaining;
+        // 并行钻井：所有施工节点同时扣减耗时，多井架不再串行（5 井泥土秒级钻完）
+        for (let i = this.activeDrills.length - 1; i >= 0; i--) {
+            const node = this.activeDrills[i];
+            node.buildTimeLeft -= dt;
             if (node.buildTimeLeft <= 0) {
-                remaining = -node.buildTimeLeft;
                 node.buildTimeLeft = 0;
                 node.status = 'done';
-                this.activeDrills.shift();
+                this.activeDrills.splice(i, 1);
                 // 管道挖通才算真正探明：揭开该格及其 8 邻域迷雾
                 gridMgr.revealArea(node.gridX, node.gridY);
                 completed = true;
-            } else {
-                remaining = 0;
             }
         }
         return completed;

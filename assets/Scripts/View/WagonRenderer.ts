@@ -25,12 +25,13 @@ export class WagonRenderer extends Component {
         graphics.clear();
 
         for (const wagon of wagonMgr.wagons) {
+            const y = 10 + wagon.id * 30;
             graphics.fillColor = wagon.currentLoad > 0 ? COLOR_LOADED : COLOR_EMPTY;
-            graphics.rect(wagon.positionX - this.wagonWidth / 2, 10, this.wagonWidth, this.wagonHeight);
+            graphics.rect(wagon.positionX - this.wagonWidth / 2, y, this.wagonWidth, this.wagonHeight);
             graphics.fill();
 
             graphics.fillColor = this._stateColor(wagon.state);
-            graphics.rect(wagon.positionX - this.wagonWidth / 4, 10 + this.wagonHeight, this.wagonWidth / 2, 6);
+            graphics.rect(wagon.positionX - this.wagonWidth / 4, y + this.wagonHeight, this.wagonWidth / 2, 6);
             graphics.fill();
         }
     }

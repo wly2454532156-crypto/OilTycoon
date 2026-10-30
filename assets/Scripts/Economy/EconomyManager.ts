@@ -16,11 +16,13 @@ export class EconomyManager {
     };
 
     surfaceBuffer = 0;
-    bufferCapacity = 50;
-    private readonly spillageRate = 10;
+    bufferCapacity = 500;
+    private readonly spillageRate = 3;
+    private readonly spillageFineInitial = 1000;
+    private hasSpilledOnce = false;
 
-    private readonly siloCapacityBonus = 50;
-    private readonly superSiloCapacityBonus = 100;
+    private readonly siloCapacityBonus = 500;
+    private readonly superSiloCapacityBonus = 1500;
 
     buyRig(): boolean {
         const price = getToolDef(ToolType.Rig).price;
@@ -65,7 +67,11 @@ export class EconomyManager {
         const spilled = this.surfaceBuffer - this.bufferCapacity;
         this.surfaceBuffer = this.bufferCapacity;
 
-        const penalty = spilled * this.spillageRate;
+        let penalty = spilled * this.spillageRate;
+        if (!this.hasSpilledOnce) {
+            penalty += this.spillageFineInitial;
+            this.hasSpilledOnce = true;
+        }
         this.wallet.balance -= penalty;
         this.wallet.spillagePenalty += penalty;
         return spilled;

@@ -1,4 +1,4 @@
-import { _decorator, Component, Label } from 'cc';
+import { _decorator, Component, Label, Node, UITransform, Color } from 'cc';
 import { WalletState } from '../Economy/EconomyManager';
 import { MarketState } from '../Economy/MarketManager';
 
@@ -21,6 +21,23 @@ export class UIPanel extends Component {
     @property(Label)
     dateLabel: Label = null;
 
+    onLoad(): void {
+        // 场景未绑定 dateLabel 时运行时创建，确保日历（紧迫感来源）在手机上可见
+        if (this.dateLabel) return;
+        const node = new Node('Date');
+        node.layer = this.node.layer;
+        node.addComponent(UITransform).setContentSize(200, 40);
+        const label = node.addComponent(Label);
+        label.fontSize = 20;
+        label.lineHeight = 30;
+        label.color = Color.WHITE;
+        label.horizontalAlign = Label.HorizontalAlign.CENTER;
+        label.verticalAlign = Label.VerticalAlign.CENTER;
+        this.node.addChild(node);
+        node.setPosition(0, 130, 0);
+        this.dateLabel = label;
+    }
+
     updateUI(wallet: WalletState, market: MarketState, buffer: number, currentDay: number, maxDays: number, bufferCapacity: number): void {
         if (this.balanceLabel) {
             this.balanceLabel.string = `$${wallet.balance.toFixed(2)}`;
@@ -36,12 +53,6 @@ export class UIPanel extends Component {
         }
         if (this.dateLabel) {
             this.dateLabel.string = `第 ${currentDay} / ${maxDays} 天`;
-        }
-    }
-
-    showGameOver(won: boolean): void {
-        if (this.dateLabel) {
-            this.dateLabel.string = won ? '🎉 游戏结束：胜利' : '💀 游戏结束：失败';
         }
     }
 }

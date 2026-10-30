@@ -26,6 +26,7 @@ export class ToolPanel extends Component {
     private _pipeController: PipeController | null = null;
 
     private _entries: { def: ToolDef; label: Label }[] = [];
+    private _modeButtons: { mode: 'left' | 'right' | 'auto'; label: Label }[] = [];
     private _messageLabel: Label | null = null;
     private _messageTicks = 0;
 
@@ -43,6 +44,9 @@ export class ToolPanel extends Component {
         for (const entry of this._entries) {
             entry.label.color = this._stateColor(entry.def);
         }
+        for (const mb of this._modeButtons) {
+            mb.label.color = this._wagonMgr && this._wagonMgr.sellMode === mb.mode ? COLOR_SELECTED : COLOR_NORMAL;
+        }
         // 工具反馈消息：显示约 2 秒后清除
         if (this._messageLabel && this._pipeController && this._pipeController.lastToolMessage) {
             this._messageLabel.string = this._pipeController.lastToolMessage;
@@ -58,13 +62,15 @@ export class ToolPanel extends Component {
     private _buildUI(): void {
         const items = TOOL_CATALOG;
 
-        // 面板背景（半透明黑底圆角）
+        // 面板背景（半透明黑底圆角），两行：上=目录，下=卖油方向
         const totalW = items.length * BTN_W + (items.length - 1) * BTN_GAP + PAD * 2;
-        const totalH = BTN_H + PAD * 2;
+        const totalH = BTN_H * 2 + BTN_GAP + PAD * 2;
         const bg = this.node.addComponent(Graphics);
         bg.fillColor = COLOR_PANEL_BG;
         bg.roundRect(-totalW / 2, -totalH / 2, totalW, totalH, 6);
         bg.fill();
+
+        const rowY = BTN_H / 2 + BTN_GAP / 2;
 
         let x = -totalW / 2 + PAD + BTN_W / 2;
         for (const def of items) {
@@ -79,12 +85,38 @@ export class ToolPanel extends Component {
             label.horizontalAlign = Label.HorizontalAlign.CENTER;
             label.verticalAlign = Label.VerticalAlign.CENTER;
             this.node.addChild(node);
-            node.setPosition(x, 0, 0);
+            node.setPosition(x, rowY, 0);
             x += BTN_W + BTN_GAP;
 
             this._entries.push({ def, label });
             const type = def.type;
             node.on(Node.EventType.TOUCH_END, () => this._onClick(type), this);
+        }
+
+        // 卖油方向行（居中 3 键：卖左 / 自动 / 卖右）
+        const modes: Array<{ mode: 'left' | 'right' | 'auto'; text: string }> = [
+            { mode: 'left', text: '卖左' },
+            { mode: 'auto', text: '自动' },
+            { mode: 'right', text: '卖右' },
+        ];
+        const modeRowW = modes.length * BTN_W + (modes.length - 1) * BTN_GAP;
+        let mx = -modeRowW / 2 + BTN_W / 2;
+        for (const m of modes) {
+            const node = new Node(`mode_${m.mode}`);
+            node.layer = this.node.layer;
+            node.addComponent(UITransform).setContentSize(BTN_W, BTN_H);
+            const label = node.addComponent(Label);
+            label.string = m.text;
+            label.fontSize = 14;
+            label.lineHeight = 20;
+            label.color = Color.WHITE;
+            label.horizontalAlign = Label.HorizontalAlign.CENTER;
+            label.verticalAlign = Label.VerticalAlign.CENTER;
+            this.node.addChild(node);
+            node.setPosition(mx, -rowY, 0);
+            mx += BTN_W + BTN_GAP;
+            this._modeButtons.push({ mode: m.mode, label });
+            node.on(Node.EventType.TOUCH_END, () => this._onModeClick(m.mode), this);
         }
 
         // 工具反馈消息标签（工具栏上方）
@@ -137,6 +169,13 @@ export class ToolPanel extends Component {
             }
         } else {
             this._selectTool(type);
+        }
+        this.refresh();
+    }
+
+    private _onModeClick(mode: 'left' | 'right' | 'auto'): void {
+        if (this._wagonMgr) {
+            this._wagonMgr.setSellMode(mode);
         }
         this.refresh();
     }

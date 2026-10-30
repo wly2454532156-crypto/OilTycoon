@@ -22,6 +22,9 @@ export interface Wagon {
 export class WagonManager {
     readonly wagons: Wagon[] = [];
 
+    // 卖油方向：auto=高价侧（默认），left/right=固定卖对应侧（对齐 Turmoil 马车左右分配）
+    sellMode: 'left' | 'right' | 'auto' = 'auto';
+
     private readonly wagonCount = 1;
     private wagonCapacity = 30;
     private wagonSpeed = 15;
@@ -116,10 +119,16 @@ export class WagonManager {
         }
     }
 
+    setSellMode(mode: 'left' | 'right' | 'auto'): void {
+        this.sellMode = mode;
+    }
+
     private _updateIdle(wagon: Wagon, economy: EconomyManager, market: MarketManager): void {
-        // 自动卖油：空闲马车自动装油，卖到当前较高价侧（保留左右价差博弈）
+        // 自动卖油：按 sellMode 决定卖哪一侧（auto=高价侧，left/right=固定）
         if (economy.surfaceBuffer <= 0) return;
-        const side = market.leftCompanyPrice >= market.rightCompanyPrice ? 'left' : 'right';
+        const side = this.sellMode === 'auto'
+            ? (market.leftCompanyPrice >= market.rightCompanyPrice ? 'left' : 'right')
+            : this.sellMode;
         wagon.targetSide = side;
         wagon.currentLoad = Math.min(wagon.capacity, economy.surfaceBuffer);
         economy.surfaceBuffer -= wagon.currentLoad;

@@ -336,7 +336,22 @@ $L$ 为新增网格长度，$B$ 为分支节点数。对分叉接头收取额外
 *   `tools/balance_sim.py`：无头复刻核心经济循环，`python tools/balance_sim.py --games N` 扫描井/车配比跑胜率。常数与 TS 代码一一对应，改 TS 时同步此处。
 
 ### 10.11 后续路线图（不在本批次）
-*   Phase 10：马车左右分配 UI（Turmoil `tut_companywagon_assignment`）。
+*   ~~Phase 10：马车左右分配 UI~~ → 见 §11（已完成）。
 *   Phase 11：卖气收益 / 炼油厂产 petrol（Turmoil `CompanyGasSellFactor=12`、`RefineryPetrolProduction`）。
 *   Phase 12：关卡间元进度 + 贷款（Turmoil campaign、tenants、`LoanUnitAmount=$500`）。
 *   Phase 13：对手 AI + 土地拍卖（Turmoil `NumPlayers=4`、`aiconfig_turmoil_expert`、`EstateBidPrice`）。
+
+## 11. Phase 10：马车左右分配 UI（2026-10-30）
+
+> 现状：马车自动卖高价侧，`registerSell` 压价被自动套利掉，玩家无参与。对齐 Turmoil `tut_companywagon_assignment`，让玩家手动分配卖油方向，激活供需博弈。
+
+### 11.1 卖油模式（`WagonManager`）
+*   新增 `sellMode: 'left' | 'right' | 'auto'`（默认 `'auto'`）+ `setSellMode(mode)`。
+*   `_updateIdle`：`auto` 卖高价侧（原行为）；`left`/`right` 固定卖对应侧。`dispatchSell`（键盘 1/2）保留为手动覆盖。
+
+### 11.2 分配按钮（`ToolPanel`）
+*   底部工具栏第二行新增 3 键「卖左 / 自动 / 卖右」，点击 `setSellMode`；`refresh()` 高亮当前模式（`COLOR_SELECTED`）。
+
+### 11.3 验收标准
+*   点「卖左」后空闲马车只卖左，左价随卖出量下压、右价回涨；切「自动」恢复高价侧。
+*   手动键盘 1/2 仍可一次性覆盖派送。

@@ -14,7 +14,7 @@ const COLOR_PIPE_BUILDING = new Color('#AAAAAA');
 const COLOR_FLOW = new Color('#000000');
 
 const MIN_ZOOM = 1;
-const MAX_ZOOM = 3;
+const MAX_ZOOM = 2.2;
 
 @ccclass('PipeController')
 export class PipeController extends Component {
@@ -41,6 +41,7 @@ export class PipeController extends Component {
     private _lastPinchDist = 0;
     private _lastPinchMid: Vec2 | null = null;
     private _isPinching = false;
+    private _lastTapTime = 0;
     private readonly _baseGridPos = new Vec3();
     private readonly _basePipePos = new Vec3();
 
@@ -272,6 +273,18 @@ export class PipeController extends Component {
             this._isPinching = false;
             this._lastPinchDist = 0;
             this._lastPinchMid = null;
+
+            // 双击复位缩放/平移
+            const now = Date.now();
+            if (now - this._lastTapTime < 300) {
+                this._zoomScale = 1;
+                this._panX = 0;
+                this._panY = 0;
+                this._applyTransform();
+                this._lastTapTime = 0;
+            } else {
+                this._lastTapTime = now;
+            }
         }
     }
 
@@ -288,6 +301,13 @@ export class PipeController extends Component {
     }
 
     private _applyTransform(): void {
+        // pan 边界钳制：地图中心不得漂离太远，缩放越大允许平移越多（SDD §14.6）
+        const clampPan = (v: number, extent: number) => Math.max(-extent, Math.min(extent, v));
+        const maxPanX = Layout.gridW * this._zoomScale * 0.5;
+        const maxPanY = Layout.gridH * this._zoomScale * 0.5;
+        this._panX = clampPan(this._panX, maxPanX);
+        this._panY = clampPan(this._panY, maxPanY);
+
         if (this._gridRenderer) {
             const g = this._gridRenderer.node;
             g.setScale(this._zoomScale, this._zoomScale, 1);

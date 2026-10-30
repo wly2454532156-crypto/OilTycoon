@@ -27,10 +27,12 @@ export class ToolPanel extends Component {
     private _pipeController: PipeController | null = null;
 
     private _entries: { def: ToolDef; label: Label }[] = [];
-    private _modeButtons: { mode: 'left' | 'right' | 'auto'; label: Label }[] = [];
     private _gasButtonLabel: Label | null = null;
+    private _loanButtonLabel: Label | null = null;
+    private _pauseLabel: Label | null = null;
     private _messageLabel: Label | null = null;
     private _messageTicks = 0;
+    pauseCallback: (() => void) | null = null;
 
     init(economy: EconomyManager, wagonMgr: WagonManager, pipeMgr: PipeNetworkManager, pipeController: PipeController): void {
         this._economy = economy;
@@ -46,12 +48,12 @@ export class ToolPanel extends Component {
         for (const entry of this._entries) {
             entry.label.color = this._stateColor(entry.def);
         }
-        for (const mb of this._modeButtons) {
-            mb.label.color = this._wagonMgr && this._wagonMgr.sellMode === mb.mode ? COLOR_SELECTED : COLOR_NORMAL;
-        }
         if (this._gasButtonLabel && this._pipeMgr) {
             const value = this._pipeMgr.getGasSaleValue();
             this._gasButtonLabel.string = value > 0 ? `卖气 $${Math.floor(value)}` : '卖气';
+        }
+        if (this._loanButtonLabel && this._economy) {
+            this._loanButtonLabel.string = this._economy.debt > 0 ? `还贷 $${Math.floor(this._economy.debt)}` : '借贷 $500';
         }
         // 工具反馈消息：显示约 2 秒后清除
         if (this._messageLabel && this._pipeController && this._pipeController.lastToolMessage) {
@@ -96,36 +98,14 @@ export class ToolPanel extends Component {
             node.on(Node.EventType.TOUCH_END, () => this._onClick(type), this);
         }
 
-        // 底部动作条（卖左 / 自动 / 卖右 + 卖气）
-        const modes: Array<{ mode: 'left' | 'right' | 'auto'; text: string }> = [
-            { mode: 'left', text: '卖左' },
-            { mode: 'auto', text: '自动' },
-            { mode: 'right', text: '卖右' },
-        ];
-        const rowButtons = modes.length + 1;
+        // 底部动作条（卖气 / 升级 / 借贷 / 暂停）
+        const rowButtons = 4;
         const actW = rowButtons * BTN_W + (rowButtons - 1) * BTN_GAP + PAD * 2;
         graphics.fillColor = COLOR_PANEL_BG;
         graphics.roundRect(-actW / 2, Layout.actionBarY - BTN_H / 2 - PAD / 2, actW, BTN_H + PAD, 6);
         graphics.fill();
 
         let mx = -actW / 2 + PAD + BTN_W / 2;
-        for (const m of modes) {
-            const node = new Node(`mode_${m.mode}`);
-            node.layer = this.node.layer;
-            node.addComponent(UITransform).setContentSize(BTN_W, BTN_H);
-            const label = node.addComponent(Label);
-            label.string = m.text;
-            label.fontSize = 14;
-            label.lineHeight = 20;
-            label.color = Color.WHITE;
-            label.horizontalAlign = Label.HorizontalAlign.CENTER;
-            label.verticalAlign = Label.VerticalAlign.CENTER;
-            this.node.addChild(node);
-            node.setPosition(mx, Layout.actionBarY, 0);
-            mx += BTN_W + BTN_GAP;
-            this._modeButtons.push({ mode: m.mode, label });
-            node.on(Node.EventType.TOUCH_END, () => this._onModeClick(m.mode), this);
-        }
 
         // 卖气按钮（显示当前可卖金额）
         const gasNode = new Node('gas');
@@ -142,6 +122,56 @@ export class ToolPanel extends Component {
         gasNode.setPosition(mx, Layout.actionBarY, 0);
         this._gasButtonLabel = gasLabel;
         gasNode.on(Node.EventType.TOUCH_END, () => this._onSellGas(), this);
+
+        // 升级按钮（钻速）
+        const upNode = new Node('upgrade');
+        upNode.layer = this.node.layer;
+        upNode.addComponent(UITransform).setContentSize(BTN_W, BTN_H);
+        const upLabel = upNode.addComponent(Label);
+        upLabel.string = '升级';
+        upLabel.fontSize = 14;
+        upLabel.lineHeight = 20;
+        upLabel.color = Color.WHITE;
+        upLabel.horizontalAlign = Label.HorizontalAlign.CENTER;
+        upLabel.verticalAlign = Label.VerticalAlign.CENTER;
+        this.node.addChild(upNode);
+        upNode.setPosition(mx, Layout.actionBarY, 0);
+        mx += BTN_W + BTN_GAP;
+        upNode.on(Node.EventType.TOUCH_END, () => this._onUpgrade(), this);
+
+        // 借贷按钮
+        const loanNode = new Node('loan');
+        loanNode.layer = this.node.layer;
+        loanNode.addComponent(UITransform).setContentSize(BTN_W, BTN_H);
+        const loanLabel = loanNode.addComponent(Label);
+        loanLabel.string = '借贷';
+        loanLabel.fontSize = 14;
+        loanLabel.lineHeight = 20;
+        loanLabel.color = Color.WHITE;
+        loanLabel.horizontalAlign = Label.HorizontalAlign.CENTER;
+        loanLabel.verticalAlign = Label.VerticalAlign.CENTER;
+        this.node.addChild(loanNode);
+        loanNode.setPosition(mx, Layout.actionBarY, 0);
+        mx += BTN_W + BTN_GAP;
+        this._loanButtonLabel = loanLabel;
+        loanNode.on(Node.EventType.TOUCH_END, () => this._onLoan(), this);
+
+        // 暂停按钮
+        const pauseNode = new Node('pause');
+        pauseNode.layer = this.node.layer;
+        pauseNode.addComponent(UITransform).setContentSize(BTN_W, BTN_H);
+        const pauseLabel = pauseNode.addComponent(Label);
+        pauseLabel.string = '暂停';
+        this._pauseLabel = pauseLabel;
+        pauseLabel.fontSize = 14;
+        pauseLabel.lineHeight = 20;
+        pauseLabel.color = Color.WHITE;
+        pauseLabel.horizontalAlign = Label.HorizontalAlign.CENTER;
+        pauseLabel.verticalAlign = Label.VerticalAlign.CENTER;
+        this.node.addChild(pauseNode);
+        pauseNode.setPosition(mx, Layout.actionBarY, 0);
+        mx += BTN_W + BTN_GAP;
+        pauseNode.on(Node.EventType.TOUCH_END, () => this._onPause(), this);
 
         // 工具反馈消息标签
         const msgNode = new Node('message');
@@ -197,13 +227,6 @@ export class ToolPanel extends Component {
         this.refresh();
     }
 
-    private _onModeClick(mode: 'left' | 'right' | 'auto'): void {
-        if (this._wagonMgr) {
-            this._wagonMgr.setSellMode(mode);
-        }
-        this.refresh();
-    }
-
     private _onSellGas(): void {
         if (this._pipeMgr && this._economy) {
             const revenue = this._pipeMgr.sellGas(this._economy);
@@ -212,6 +235,33 @@ export class ToolPanel extends Component {
             }
         }
         this.refresh();
+    }
+
+    private _onUpgrade(): void {
+        if (this._pipeMgr && this._economy) {
+            this._pipeMgr.upgradeDrillSpeed(this._economy);
+        }
+        this.refresh();
+    }
+
+    private _onLoan(): void {
+        if (this._economy) {
+            if (this._economy.debt > 0) {
+                this._economy.repayLoan();
+            } else {
+                this._economy.borrowLoan();
+            }
+        }
+        this.refresh();
+    }
+
+    private _onPause(): void {
+        if (this.pauseCallback) {
+            this.pauseCallback();
+        }
+        if (this._pauseLabel) {
+            this._pauseLabel.string = this._pauseLabel.string === '暂停' ? '继续' : '暂停';
+        }
     }
 
     private _selectTool(type: ToolType): void {

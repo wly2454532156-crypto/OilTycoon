@@ -22,12 +22,9 @@ export interface Wagon {
 export class WagonManager {
     readonly wagons: Wagon[] = [];
 
-    // 卖油方向：auto=高价侧（默认），left/right=固定卖对应侧（对齐 Turmoil 马车左右分配）
-    sellMode: 'left' | 'right' | 'auto' = 'auto';
-
     private readonly wagonCount = 1;
     private wagonCapacity = 30;
-    private wagonSpeed = 15;
+    private wagonSpeed = 75;
     private companyDistance = 100;
 
     // 升级成本与效果（后续接入科技树 UI）
@@ -119,21 +116,15 @@ export class WagonManager {
         }
     }
 
-    setSellMode(mode: 'left' | 'right' | 'auto'): void {
-        this.sellMode = mode;
-    }
-
     // 马车往返距离（左右公司到井区的距离），由 GameManager 按地图宽设置
     setCompanyDistance(d: number): void {
         this.companyDistance = d;
     }
 
     private _updateIdle(wagon: Wagon, economy: EconomyManager, market: MarketManager): void {
-        // 自动卖油：按 sellMode 决定卖哪一侧（auto=高价侧，left/right=固定）
+        // 自动卖油：空闲马车自动装油，卖到当前较高价侧
         if (economy.surfaceBuffer <= 0) return;
-        const side = this.sellMode === 'auto'
-            ? (market.leftCompanyPrice >= market.rightCompanyPrice ? 'left' : 'right')
-            : this.sellMode;
+        const side = market.leftCompanyPrice >= market.rightCompanyPrice ? 'left' : 'right';
         wagon.targetSide = side;
         wagon.currentLoad = Math.min(wagon.capacity, economy.surfaceBuffer);
         economy.surfaceBuffer -= wagon.currentLoad;
@@ -151,7 +142,7 @@ export class WagonManager {
         const side = wagon.targetSide;
         const price = side === 'left' ? market.leftCompanyPrice : market.rightCompanyPrice;
         economy.sellOil(wagon.currentLoad, price);
-        market.registerSell(side, wagon.currentLoad);
+        market.registerSell(side, wagon.currentLoad, price);
         wagon.currentLoad = 0;
         wagon.state = WagonState.TO_SILO;
     }

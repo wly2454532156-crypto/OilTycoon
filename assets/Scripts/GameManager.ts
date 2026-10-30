@@ -138,6 +138,7 @@ export class GameManager extends Component {
         this.wagonMgr.updateWagons(this.economy, this.market);
 
         this.economy.checkSpillage();
+        this.economy.applyLoanInterest();
 
         // 库存将满时提示玩家手动卖油，避免误以为卡死
         if (this.economy.surfaceBuffer >= this.economy.bufferCapacity) {
@@ -155,7 +156,7 @@ export class GameManager extends Component {
         }
 
         console.log(
-            `[Tick ${this.tickCounter}] 油价 L=$${this.market.leftCompanyPrice.toFixed(2)} R=$${this.market.rightCompanyPrice.toFixed(2)} | 抽出 ${extracted} | 气体 ${this.pipeMgr.gasLevel}${this.pipeMgr.isBurning ? ' 🔥燃烧中' : ''} | 库存 ${this.economy.surfaceBuffer} | 余额 $${this.economy.wallet.balance.toFixed(2)} | 马车活跃 ${this.wagonMgr.activeWagonCount}/${this.wagonMgr.wagons.length}`,
+            `[Tick ${this.tickCounter}] 油价 L=$${this.market.leftCompanyPrice.toFixed(2)} R=$${this.market.rightCompanyPrice.toFixed(2)} | 抽出 ${extracted} | 气体 ${this.pipeMgr.gasLevel}${this.pipeMgr.isBurning ? ' 🔥燃烧中' : ''} | 库存 ${this.economy.surfaceBuffer} | 余额 $${this.economy.wallet.balance.toFixed(2)} | 负债 $${this.economy.debt.toFixed(0)} | 马车活跃 ${this.wagonMgr.activeWagonCount}/${this.wagonMgr.wagons.length}`,
         );
 
         if (this.uiPanel) {
@@ -171,6 +172,7 @@ export class GameManager extends Component {
 
     private _triggerGameOver(): void {
         this.isGameOver = true;
+        this.economy.settleDebt();
         const won = this.economy.wallet.balance >= this.targetMoney;
 
         console.log('==========================================');
@@ -209,6 +211,12 @@ export class GameManager extends Component {
                 break;
             case KeyCode.KEY_G:
                 this.pipeMgr.sellGas(this.economy);
+                break;
+            case KeyCode.KEY_L:
+                this.economy.borrowLoan();
+                break;
+            case KeyCode.KEY_R:
+                this.economy.repayLoan();
                 break;
             case KeyCode.DIGIT_1:
                 this.wagonMgr.dispatchSell('left', this.economy);

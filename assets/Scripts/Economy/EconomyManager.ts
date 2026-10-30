@@ -21,6 +21,12 @@ export class EconomyManager {
     private readonly spillageFineInitial = 1000;
     private hasSpilledOnce = false;
 
+    // 贷款（Phase 12a）：借 $500 加速扩张，0.1%/tick 计息，未还债务结算时从余额扣除
+    debt = 0;
+    private readonly loanUnitAmount = 500;
+    private readonly maxDebt = 1000;
+    private readonly loanInterestPerTick = 0.001;
+
     private readonly siloCapacityBonus = 500;
     private readonly superSiloCapacityBonus = 1500;
 
@@ -89,5 +95,32 @@ export class EconomyManager {
     addRevenue(amount: number): void {
         this.wallet.balance += amount;
         this.wallet.totalEarned += amount;
+    }
+
+    borrowLoan(): boolean {
+        if (this.debt >= this.maxDebt) return false;
+        this.wallet.balance += this.loanUnitAmount;
+        this.debt += this.loanUnitAmount;
+        return true;
+    }
+
+    repayLoan(): number {
+        const pay = Math.min(this.wallet.balance, this.debt);
+        this.wallet.balance -= pay;
+        this.debt -= pay;
+        return pay;
+    }
+
+    applyLoanInterest(): void {
+        if (this.debt > 0) {
+            this.debt *= 1 + this.loanInterestPerTick;
+        }
+    }
+
+    settleDebt(): number {
+        const d = this.debt;
+        this.wallet.balance -= d;
+        this.debt = 0;
+        return d;
     }
 }

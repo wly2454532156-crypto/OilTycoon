@@ -337,8 +337,8 @@ $L$ 为新增网格长度，$B$ 为分支节点数。对分叉接头收取额外
 
 ### 10.11 后续路线图（不在本批次）
 *   ~~Phase 10：马车左右分配 UI~~ → 见 §11（已完成）。
-*   Phase 11：卖气收益 / 炼油厂产 petrol（Turmoil `CompanyGasSellFactor=12`、`RefineryPetrolProduction`）。
-*   Phase 12：关卡间元进度 + 贷款（Turmoil campaign、tenants、`LoanUnitAmount=$500`）。
+*   ~~Phase 11：卖气收益~~ → 见 §12（已完成；炼油厂产 petrol 留后续）。
+*   Phase 12a：贷款 → 见 §13（本次）；Phase 12b：关卡间元进度（Turmoil campaign、tenants）留后续。
 *   Phase 13：对手 AI + 土地拍卖（Turmoil `NumPlayers=4`、`aiconfig_turmoil_expert`、`EstateBidPrice`）。
 
 ## 11. Phase 10：马车左右分配 UI（2026-10-30）
@@ -376,3 +376,17 @@ $L$ 为新增网格长度，$B$ 为分支节点数。对分叉接头收取额外
 ### 12.4 验收标准
 *   钻到气藏后气格会枯竭（不再永久燃烧）；气量缓涨，点「卖气」入账并清零；若放任气量 ≥ 200 仍会燃烧扣款。
 *   气藏从「纯惩罚」变成「卖则赚、不管则烧」的取舍。
+
+## 13. Phase 12a：贷款（2026-10-30）
+
+> 对齐 Turmoil `LoanUnitAmount=$500`。让玩家能借钱加速扩张，但要付息、且结算时未还债务从余额扣除（不能靠借债刷赢）。元进度（campaign/tenants）留后续。
+
+### 13.1 贷款逻辑（`EconomyManager`）
+*   新增 `debt`、`borrowLoan()`（借 $500，`maxDebt=$1000`）、`repayLoan()`（还 `min(余额, 债务)`）、`applyLoanInterest()`（每 tick `debt *= 1.001`，0.1%/tick ≈ 27%/局）、`settleDebt()`（结算扣余额清零）。
+
+### 13.2 接入（`GameManager`）
+*   `tick()` 调 `applyLoanInterest()`；`_triggerGameOver` 先 `settleDebt()` 再判胜负；tick 日志加负债；键盘 `L`=借、`R`=还（调试）。
+
+### 13.3 验收标准
+*   按 L 借 $500、余额 +$500、负债 +$500；负债每 tick 微涨；按 R 还款；到点未还债务从余额扣除后再判胜负。
+*   点击版贷款/还款按钮 + 负债显示 UI 留后续。

@@ -29,21 +29,27 @@ export class GridRenderer extends Component {
                 const px = Layout.gridLeft + x * Layout.cellW;
                 const py = Layout.gridTop - (y + 1) * Layout.cellH;
 
+                // 泥土基底：所有格都画，未揭示区不变成纯黑
                 if (block.isOilHint) {
                     graphics.fillColor = Palette.oilHint;
-                } else if (block.isRevealed) {
-                    graphics.fillColor = this._soilColor(y, height);
                 } else {
-                    const d = fogDist[y][x];
-                    const a = d === 1 ? 0.34 : d === 2 ? 0.56 : 0.74;
-                    graphics.fillColor = new Color(Palette.fog.r, Palette.fog.g, Palette.fog.b, Math.floor(a * 255));
+                    graphics.fillColor = this._soilColor(y, height);
                 }
                 graphics.rect(px, py, Layout.cellW + 0.5, Layout.cellH + 0.5);
                 graphics.fill();
 
                 // 已揭示的非泥土地块：叠加岩石/油/气
-                if (block.isRevealed && block.type !== BlockType.Dirt) {
+                if (!block.isOilHint && block.isRevealed && block.type !== BlockType.Dirt) {
                     this._drawSpecial(graphics, block, px, py);
+                }
+
+                // 迷雾覆盖：未揭示的泥土上叠半透明暗层（三级羽化）
+                if (!block.isOilHint && !block.isRevealed) {
+                    const d = fogDist[y][x];
+                    const a = d === 1 ? 0.34 : d === 2 ? 0.56 : 0.74;
+                    graphics.fillColor = new Color(Palette.fog.r, Palette.fog.g, Palette.fog.b, Math.floor(a * 255));
+                    graphics.rect(px, py, Layout.cellW + 0.5, Layout.cellH + 0.5);
+                    graphics.fill();
                 }
             }
         }
@@ -135,7 +141,7 @@ export class GridRenderer extends Component {
         graphics.beginPath();
         for (let y = 0; y < height; y++) {
             for (let x = 0; x < width; x++) {
-                if (grid[y][x].type !== BlockType.Oil) continue;
+                if (grid[y][x].type !== BlockType.Oil || !grid[y][x].isRevealed) continue;
                 const px = Layout.gridLeft + x * Layout.cellW;
                 const py = Layout.gridTop - (y + 1) * Layout.cellH;
                 const cw = Layout.cellW;

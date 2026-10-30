@@ -30,6 +30,7 @@ export class ToolPanel extends Component {
     private _gasButtonLabel: Label | null = null;
     private _loanButtonLabel: Label | null = null;
     private _pauseLabel: Label | null = null;
+    private _autoButtonLabel: Label | null = null;
     private _messageLabel: Label | null = null;
     private _messageTicks = 0;
     pauseCallback: (() => void) | null = null;
@@ -47,6 +48,9 @@ export class ToolPanel extends Component {
     refresh(): void {
         for (const entry of this._entries) {
             entry.label.color = this._stateColor(entry.def);
+        }
+        if (this._autoButtonLabel && this._wagonMgr) {
+            this._autoButtonLabel.color = this._wagonMgr.autoSell ? COLOR_SELECTED : COLOR_NORMAL;
         }
         if (this._gasButtonLabel && this._pipeMgr) {
             const value = this._pipeMgr.getGasSaleValue();
@@ -98,14 +102,31 @@ export class ToolPanel extends Component {
             node.on(Node.EventType.TOUCH_END, () => this._onClick(type), this);
         }
 
-        // 底部动作条（卖气 / 升级 / 借贷 / 暂停）
-        const rowButtons = 4;
+        // 底部动作条（自动 / 卖气 / 升级 / 借贷 / 暂停）
+        const rowButtons = 5;
         const actW = rowButtons * BTN_W + (rowButtons - 1) * BTN_GAP + PAD * 2;
         graphics.fillColor = COLOR_PANEL_BG;
         graphics.roundRect(-actW / 2, Layout.actionBarY - BTN_H / 2 - PAD / 2, actW, BTN_H + PAD, 6);
         graphics.fill();
 
         let mx = -actW / 2 + PAD + BTN_W / 2;
+
+        // 自动卖油开关
+        const autoNode = new Node('auto');
+        autoNode.layer = this.node.layer;
+        autoNode.addComponent(UITransform).setContentSize(BTN_W, BTN_H);
+        const autoLabel = autoNode.addComponent(Label);
+        autoLabel.string = '自动';
+        autoLabel.fontSize = 14;
+        autoLabel.lineHeight = 20;
+        autoLabel.color = Color.WHITE;
+        autoLabel.horizontalAlign = Label.HorizontalAlign.CENTER;
+        autoLabel.verticalAlign = Label.VerticalAlign.CENTER;
+        this.node.addChild(autoNode);
+        autoNode.setPosition(mx, Layout.actionBarY, 0);
+        mx += BTN_W + BTN_GAP;
+        this._autoButtonLabel = autoLabel;
+        autoNode.on(Node.EventType.TOUCH_END, () => this._onAuto(), this);
 
         // 卖气按钮（显示当前可卖金额）
         const gasNode = new Node('gas');
@@ -223,6 +244,13 @@ export class ToolPanel extends Component {
             }
         } else {
             this._selectTool(type);
+        }
+        this.refresh();
+    }
+
+    private _onAuto(): void {
+        if (this._wagonMgr) {
+            this._wagonMgr.toggleAutoSell();
         }
         this.refresh();
     }

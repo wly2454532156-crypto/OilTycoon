@@ -22,6 +22,9 @@ export interface Wagon {
 export class WagonManager {
     readonly wagons: Wagon[] = [];
 
+    // 自动卖油：true=空闲马车自动卖到高价侧；false=装满后停下等派车
+    autoSell = true;
+
     private readonly wagonCount = 1;
     private wagonCapacity = 30;
     private wagonSpeed = 75;
@@ -107,11 +110,13 @@ export class WagonManager {
     dispatchSell(side: 'left' | 'right', economy: EconomyManager): void {
         for (const wagon of this.wagons) {
             if (wagon.state !== WagonState.IDLE) continue;
-            if (economy.surfaceBuffer <= 0) break;
-
+            // 空车先装满，已装满的直接发车
+            if (wagon.currentLoad <= 0) {
+                if (economy.surfaceBuffer <= 0) break;
+                wagon.currentLoad = Math.min(wagon.capacity, economy.surfaceBuffer);
+                economy.surfaceBuffer -= wagon.currentLoad;
+            }
             wagon.targetSide = side;
-            wagon.currentLoad = Math.min(wagon.capacity, economy.surfaceBuffer);
-            economy.surfaceBuffer -= wagon.currentLoad;
             wagon.state = WagonState.TO_COMPANY;
         }
     }
@@ -121,9 +126,21 @@ export class WagonManager {
         this.companyDistance = d;
     }
 
+    toggleAutoSell(): void {
+        this.autoSell = !this.autoSell;
+    }
+
     private _updateIdle(wagon: Wagon, economy: EconomyManager, market: MarketManager): void {
-        // 自动卖油：空闲马车自动装油，卖到当前较高价侧
         if (economy.surfaceBuffer <= 0) return;
+        if (!this.autoSell) {
+            // 手动模式：只装满、不发车，停在原地等派车
+            if (wagon.currentLoad >= wagon.capacity) return;
+            const load = Math.min(wagon.capacity - wagon.currentLoad, economy.surfaceBuffer);
+            wagon.currentLoad += load;
+            economy.surfaceBuffer -= load;
+            return;
+        }
+        // 自动模式：装满并自动发车到高价侧
         const side = market.leftCompanyPrice >= market.rightCompanyPrice ? 'left' : 'right';
         wagon.targetSide = side;
         wagon.currentLoad = Math.min(wagon.capacity, economy.surfaceBuffer);

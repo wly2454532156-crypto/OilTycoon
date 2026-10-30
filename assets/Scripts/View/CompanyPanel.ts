@@ -7,51 +7,109 @@ import { Layout } from '../Core/Layout';
 const { ccclass } = _decorator;
 
 const PANEL_W = 147;
-const COLOR_A = new Color('#E0A33F'); // 买方 A 暖金
-const COLOR_B = new Color('#4E93A8'); // 买方 B 冷青
+const COLOR_A = new Color('#E0A33F');
+const COLOR_B = new Color('#4E93A8');
+const COLOR_UP = new Color('#7FBF6A');
+const COLOR_DOWN = new Color('#E05B4B');
 const COLOR_PANEL_BG = new Color(0, 0, 0, 170);
+
+interface SidePanel {
+    price: Label | null;
+    trend: Label | null;
+    sold: Label | null;
+    spark: Graphics | null;
+    history: number[];
+}
 
 @ccclass('CompanyPanel')
 export class CompanyPanel extends Component {
     private _economy: EconomyManager | null = null;
     private _wagonMgr: WagonManager | null = null;
     private _market: MarketManager | null = null;
-    private _leftPriceLabel: Label | null = null;
-    private _rightPriceLabel: Label | null = null;
+    private _left: SidePanel = { price: null, trend: null, sold: null, spark: null, history: [] };
+    private _right: SidePanel = { price: null, trend: null, sold: null, spark: null, history: [] };
 
     init(economy: EconomyManager, wagonMgr: WagonManager, market: MarketManager): void {
         this._economy = economy;
         this._wagonMgr = wagonMgr;
         this._market = market;
-        this._buildPanel('left', -Layout.panelCenterX, '买方 A', COLOR_A);
-        this._buildPanel('right', Layout.panelCenterX, '买方 B', COLOR_B);
+        this._left = this._buildPanel('left', -Layout.panelCenterX, '买方 A', COLOR_A);
+        this._right = this._buildPanel('right', Layout.panelCenterX, '买方 B', COLOR_B);
         this.refresh();
     }
 
     refresh(): void {
-        if (this._market && this._leftPriceLabel) {
-            this._leftPriceLabel.string = `$${this._market.leftCompanyPrice.toFixed(2)}`;
-        }
-        if (this._market && this._rightPriceLabel) {
-            this._rightPriceLabel.string = `$${this._market.rightCompanyPrice.toFixed(2)}`;
-        }
+        const m = this._market;
+        if (!m) return;
+        this._refreshSide(this._left, m.leftCompanyPrice, m.leftTotalSold, m.leftTotalRevenue, COLOR_A);
+        this._refreshSide(this._right, m.rightCompanyPrice, m.rightTotalSold, m.rightTotalRevenue, COLOR_B);
     }
 
-    private _buildPanel(side: 'left' | 'right', x: number, name: string, color: Color): void {
+    private _refreshSide(s: SidePanel, price: number, sold: number, revenue: number, color: Color): void {
+        if (s.price) s.price.string = `$${price.toFixed(2)}`;
+
+        const prev = s.history.length > 0 ? s.history[s.history.length - 1] : price;
+        const delta = price - prev;
+        if (s.trend) {
+            s.trend.string = delta >= 0 ? `▲ ${delta.toFixed(2)} · 走高` : `▼ ${Math.abs(delta).toFixed(2)} · 走低`;
+            s.trend.color = delta >= 0 ? COLOR_UP : COLOR_DOWN;
+        }
+
+        s.history.push(price);
+        if (s.history.length > 30) s.history.shift();
+        try {
+            this._drawSpark(s.spark, s.history, color);
+        } catch (e) {
+            console.error('[Spark]', e);
+        }
+
+        if (s.sold) s.sold.string = `已卖 $${revenue.toFixed(0)} · ${Math.floor(sold)} 桶`;
+    }
+
+    private _drawSpark(g: Graphics | null, history: number[], color: Color): void {
+        if (!g) return;
+        g.clear();
+        if (history.length < 2) return;
+        const W = 126;
+        const H = 40;
+        let min = history[0];
+        let max = history[0];
+        for (const v of history) {
+            if (v < min) min = v;
+            if (v > max) max = v;
+        }
+        const range = max - min || 1;
+        g.strokeColor = color;
+        g.lineWidth = 1.6;
+        g.beginPath();
+        for (let i = 0; i < history.length; i++) {
+            const x = -W / 2 + (i / (history.length - 1)) * W;
+            const y = -H / 2 + ((history[i] - min) / range) * H;
+            if (i === 0) g.moveTo(x, y);
+            else g.lineTo(x, y);
+        }
+        g.stroke();
+    }
+
+    private _buildPanel(side: 'left' | 'right', x: number, name: string, color: Color): SidePanel {
         const graphics = this.node.addComponent(Graphics);
         graphics.fillColor = COLOR_PANEL_BG;
         graphics.roundRect(x - PANEL_W / 2, Layout.panelCenterY - Layout.panelH / 2, PANEL_W, Layout.panelH, 10);
         graphics.fill();
 
-        // 公司名
         this._addLabel('name', name, 15, color, x, Layout.panelCenterY + 225, PANEL_W, 40);
-
-        // 实时价
         const priceLabel = this._addLabel('price', '$0.00', 30, Color.WHITE, x, Layout.panelCenterY + 160, PANEL_W, 50);
-        if (side === 'left') this._leftPriceLabel = priceLabel;
-        else this._rightPriceLabel = priceLabel;
+        const trendLabel = this._addLabel('trend', '—', 12, Color.WHITE, x, Layout.panelCenterY + 125, PANEL_W, 24);
 
-        // 派车按钮
+        const sparkNode = new Node('spark');
+        sparkNode.layer = this.node.layer;
+        sparkNode.addComponent(UITransform).setContentSize(126, 40);
+        const spark = sparkNode.addComponent(Graphics);
+        this.node.addChild(sparkNode);
+        sparkNode.setPosition(x, Layout.panelCenterY + 70, 0);
+
+        const soldLabel = this._addLabel('sold', '已卖 $0 · 0 桶', 11, Color.WHITE, x, Layout.panelCenterY - 100, PANEL_W, 30);
+
         const btn = new Node('dispatch');
         btn.layer = this.node.layer;
         btn.addComponent(UITransform).setContentSize(PANEL_W - 18, 70);
@@ -66,11 +124,12 @@ export class CompanyPanel extends Component {
         btn.setPosition(x, Layout.panelCenterY - 220, 0);
         btn.on(Node.EventType.TOUCH_END, () => this._onDispatch(side), this);
 
-        // 按钮底板（点击区更明显）
         const bg = btn.addComponent(Graphics);
         bg.fillColor = new Color(color.r, color.g, color.b, 40);
         bg.roundRect(-(PANEL_W - 18) / 2, -35, PANEL_W - 18, 70, 9);
         bg.fill();
+
+        return { price: priceLabel, trend: trendLabel, sold: soldLabel, spark, history: [] };
     }
 
     private _addLabel(n: string, text: string, fontSize: number, color: Color, x: number, y: number, w: number, h: number): Label {

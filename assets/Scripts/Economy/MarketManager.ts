@@ -19,6 +19,11 @@ export class MarketManager implements MarketState {
     // 供需反馈（SDD 4.3）：卖出越多，该侧价格越被压低，随时间缓慢恢复
     private leftSellPressure = 0;
     private rightSellPressure = 0;
+    // 累计卖出量/营收（公司面板「已卖给它」统计用）
+    leftTotalSold = 0;
+    rightTotalSold = 0;
+    leftTotalRevenue = 0;
+    rightTotalRevenue = 0;
     private readonly sellPressurePerUnit = 0.006;
     private readonly sellPressureDecay = 0.97;
     private readonly minPriceFactor = 0.82;
@@ -31,12 +36,16 @@ export class MarketManager implements MarketState {
         this.rightCompanyPrice = this._compute(tickCounter, this.rightPhase, this.rightSellPressure);
     }
 
-    registerSell(side: 'left' | 'right', volume: number): void {
+    registerSell(side: 'left' | 'right', volume: number, price: number): void {
         const delta = volume * this.sellPressurePerUnit;
         if (side === 'left') {
             this.leftSellPressure += delta;
+            this.leftTotalSold += volume;
+            this.leftTotalRevenue += volume * price;
         } else {
             this.rightSellPressure += delta;
+            this.rightTotalSold += volume;
+            this.rightTotalRevenue += volume * price;
         }
     }
 

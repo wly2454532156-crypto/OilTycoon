@@ -57,6 +57,7 @@ export class GameManager extends Component {
     private maxDays = 120;
     private targetMoney = 2500;
     private isGameOver = false;
+    private isPaused = false;
 
     onLoad(): void {
         input.on(Input.EventType.KEY_DOWN, this._onKeyDown, this);
@@ -96,6 +97,7 @@ export class GameManager extends Component {
 
         if (this.toolPanel) {
             this.toolPanel.init(this.economy, this.wagonMgr, this.pipeMgr, this.pipeController);
+            this.toolPanel.pauseCallback = () => this.togglePause();
         }
 
         // 左右公司面板（SDD §14.5）
@@ -126,8 +128,8 @@ export class GameManager extends Component {
     }
 
     update(deltaTime: number): void {
-        // 游戏结束则冻结整个模拟
-        if (this.isGameOver) return;
+        // 游戏结束或暂停则冻结整个模拟
+        if (this.isGameOver || this.isPaused) return;
 
         // 每帧必须执行（在 Tick 循环之外）：钻头时间平滑流逝
         const drillCompleted = this.pipeMgr.updateDrills(deltaTime, this.gridMgr);
@@ -193,16 +195,32 @@ export class GameManager extends Component {
         );
 
         if (this.uiPanel) {
-            this.uiPanel.updateUI(this.economy.wallet, this.market, this.economy.surfaceBuffer, this.currentDay, this.maxDays, this.economy.bufferCapacity);
+            try {
+                this.uiPanel.updateUI(this.economy.wallet, this.market, this.economy.surfaceBuffer, this.currentDay, this.maxDays, this.economy.bufferCapacity, this.targetMoney, this.pipeMgr.gasLevel);
+            } catch (e) {
+                console.error('[UIPanel]', e);
+            }
         }
         if (this.toolPanel) {
-            this.toolPanel.refresh();
+            try {
+                this.toolPanel.refresh();
+            } catch (e) {
+                console.error('[ToolPanel]', e);
+            }
         }
         if (this.companyPanel) {
-            this.companyPanel.refresh();
+            try {
+                this.companyPanel.refresh();
+            } catch (e) {
+                console.error('[CompanyPanel]', e);
+            }
         }
         if (this.wagonRenderer) {
-            this.wagonRenderer.renderWagons(this.wagonMgr);
+            try {
+                this.wagonRenderer.renderWagons(this.wagonMgr);
+            } catch (e) {
+                console.error('[WagonRenderer]', e);
+            }
         }
     }
 
@@ -228,6 +246,10 @@ export class GameManager extends Component {
         canvas.addChild(recapNode);
         recapNode.setPosition(0, 0, 0);
         recap.show(won, this.economy.wallet, this.targetMoney, this.currentDay, this.maxDays);
+    }
+
+    togglePause(): void {
+        this.isPaused = !this.isPaused;
     }
 
     private _onKeyDown(event: EventKeyboard): void {

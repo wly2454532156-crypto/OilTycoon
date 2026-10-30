@@ -24,8 +24,8 @@ export class WagonRenderer extends Component {
     @property(Color)
     colorToSilo = new Color('#0000FF');
 
-    private readonly wagonWidth = 40;
-    private readonly wagonHeight = 20;
+    private readonly wagonWidth = 64;
+    private readonly wagonHeight = 32;
 
     renderWagons(wagonMgr: WagonManager): void {
         const graphics = this.getComponent(Graphics);

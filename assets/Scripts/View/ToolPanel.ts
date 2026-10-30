@@ -4,6 +4,7 @@ import { EconomyManager } from '../Economy/EconomyManager';
 import { WagonManager } from '../Economy/WagonManager';
 import { PipeNetworkManager } from '../Core/PipeNetworkManager';
 import { PipeController } from './PipeController';
+import { Layout } from '../Core/Layout';
 
 const { ccclass } = _decorator;
 
@@ -66,18 +67,15 @@ export class ToolPanel extends Component {
 
     private _buildUI(): void {
         const items = TOOL_CATALOG;
+        const graphics = this.node.addComponent(Graphics);
 
-        // 面板背景（半透明黑底圆角），两行：上=目录，下=卖油方向
-        const totalW = items.length * BTN_W + (items.length - 1) * BTN_GAP + PAD * 2;
-        const totalH = BTN_H * 2 + BTN_GAP + PAD * 2;
-        const bg = this.node.addComponent(Graphics);
-        bg.fillColor = COLOR_PANEL_BG;
-        bg.roundRect(-totalW / 2, -totalH / 2, totalW, totalH, 6);
-        bg.fill();
+        // 顶部购买栏（8 槽）
+        const shopW = items.length * BTN_W + (items.length - 1) * BTN_GAP + PAD * 2;
+        graphics.fillColor = COLOR_PANEL_BG;
+        graphics.roundRect(-shopW / 2, Layout.shopBarY - BTN_H / 2 - PAD / 2, shopW, BTN_H + PAD, 6);
+        graphics.fill();
 
-        const rowY = BTN_H / 2 + BTN_GAP / 2;
-
-        let x = -totalW / 2 + PAD + BTN_W / 2;
+        let x = -shopW / 2 + PAD + BTN_W / 2;
         for (const def of items) {
             const node = new Node(`tool_${def.type}`);
             node.layer = this.node.layer;
@@ -90,7 +88,7 @@ export class ToolPanel extends Component {
             label.horizontalAlign = Label.HorizontalAlign.CENTER;
             label.verticalAlign = Label.VerticalAlign.CENTER;
             this.node.addChild(node);
-            node.setPosition(x, rowY, 0);
+            node.setPosition(x, Layout.shopBarY, 0);
             x += BTN_W + BTN_GAP;
 
             this._entries.push({ def, label });
@@ -98,15 +96,19 @@ export class ToolPanel extends Component {
             node.on(Node.EventType.TOUCH_END, () => this._onClick(type), this);
         }
 
-        // 卖油方向行（3 键：卖左 / 自动 / 卖右）+ 卖气（第 4 键）
+        // 底部动作条（卖左 / 自动 / 卖右 + 卖气）
         const modes: Array<{ mode: 'left' | 'right' | 'auto'; text: string }> = [
             { mode: 'left', text: '卖左' },
             { mode: 'auto', text: '自动' },
             { mode: 'right', text: '卖右' },
         ];
         const rowButtons = modes.length + 1;
-        const modeRowW = rowButtons * BTN_W + (rowButtons - 1) * BTN_GAP;
-        let mx = -modeRowW / 2 + BTN_W / 2;
+        const actW = rowButtons * BTN_W + (rowButtons - 1) * BTN_GAP + PAD * 2;
+        graphics.fillColor = COLOR_PANEL_BG;
+        graphics.roundRect(-actW / 2, Layout.actionBarY - BTN_H / 2 - PAD / 2, actW, BTN_H + PAD, 6);
+        graphics.fill();
+
+        let mx = -actW / 2 + PAD + BTN_W / 2;
         for (const m of modes) {
             const node = new Node(`mode_${m.mode}`);
             node.layer = this.node.layer;
@@ -119,7 +121,7 @@ export class ToolPanel extends Component {
             label.horizontalAlign = Label.HorizontalAlign.CENTER;
             label.verticalAlign = Label.VerticalAlign.CENTER;
             this.node.addChild(node);
-            node.setPosition(mx, -rowY, 0);
+            node.setPosition(mx, Layout.actionBarY, 0);
             mx += BTN_W + BTN_GAP;
             this._modeButtons.push({ mode: m.mode, label });
             node.on(Node.EventType.TOUCH_END, () => this._onModeClick(m.mode), this);
@@ -137,14 +139,14 @@ export class ToolPanel extends Component {
         gasLabel.horizontalAlign = Label.HorizontalAlign.CENTER;
         gasLabel.verticalAlign = Label.VerticalAlign.CENTER;
         this.node.addChild(gasNode);
-        gasNode.setPosition(mx, -rowY, 0);
+        gasNode.setPosition(mx, Layout.actionBarY, 0);
         this._gasButtonLabel = gasLabel;
         gasNode.on(Node.EventType.TOUCH_END, () => this._onSellGas(), this);
 
-        // 工具反馈消息标签（工具栏上方）
+        // 工具反馈消息标签
         const msgNode = new Node('message');
         msgNode.layer = this.node.layer;
-        msgNode.addComponent(UITransform).setContentSize(totalW, 30);
+        msgNode.addComponent(UITransform).setContentSize(shopW, 30);
         const msgLabel = msgNode.addComponent(Label);
         msgLabel.fontSize = 14;
         msgLabel.lineHeight = 20;
@@ -152,7 +154,7 @@ export class ToolPanel extends Component {
         msgLabel.horizontalAlign = Label.HorizontalAlign.CENTER;
         msgLabel.verticalAlign = Label.VerticalAlign.CENTER;
         this.node.addChild(msgNode);
-        msgNode.setPosition(0, totalH / 2 + 20, 0);
+        msgNode.setPosition(0, Layout.shopBarY - 55, 0);
         this._messageLabel = msgLabel;
     }
 

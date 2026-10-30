@@ -103,6 +103,8 @@ export class GameManager extends Component {
         if (this.gridRenderer) nodes.push(this.gridRenderer.node);
         if (this.pipeController) nodes.push(this.pipeController.node);
         if (this.wagonRenderer) nodes.push(this.wagonRenderer.node);
+        if (this.uiPanel) nodes.push(this.uiPanel.node);
+        if (this.toolPanel) nodes.push(this.toolPanel.node);
         for (const node of nodes) {
             const ut = node.getComponent(UITransform);
             if (ut) ut.setAnchorPoint(0.5, 0.5);

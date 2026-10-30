@@ -28,6 +28,10 @@ export const Layout = (() => {
         gridH,
         gridLeft,
         gridTop,
+        // 各横条中心 Y（Canvas 中心、Y 向上）
+        statusBarY: DESIGN_H / 2 - 30,    // 状态条（60 高，顶部 0~60）
+        shopBarY: DESIGN_H / 2 - 102,     // 购买栏（84 高，顶部 60~144）
+        actionBarY: DESIGN_H / 2 - 706,   // 动作条（88 高，顶部 662~750）
     };
 })();
 

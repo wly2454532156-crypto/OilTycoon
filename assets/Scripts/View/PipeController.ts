@@ -5,8 +5,9 @@ import { EconomyManager } from '../Economy/EconomyManager';
 import { ToolType, getToolDef } from '../Economy/ToolCatalog';
 import { ToolManager } from '../Core/ToolManager';
 import { GridRenderer } from './GridRenderer';
+import { Layout, worldToCell } from '../Core/Layout';
 
-const { ccclass, property } = _decorator;
+const { ccclass } = _decorator;
 
 const COLOR_PIPE_DONE = new Color('#333333');
 const COLOR_PIPE_BUILDING = new Color('#AAAAAA');
@@ -17,9 +18,6 @@ const MAX_ZOOM = 3;
 
 @ccclass('PipeController')
 export class PipeController extends Component {
-    @property
-    cellSize = 20;
-
     private _gridMgr: GridManager | null = null;
     private _pipeMgr: PipeNetworkManager | null = null;
     private _economy: EconomyManager | null = null;
@@ -79,10 +77,12 @@ export class PipeController extends Component {
             return;
         }
 
-        graphics.clear();
-        graphics.lineWidth = this.cellSize * 0.4;
+        const cx = (gx: number) => Layout.gridLeft + (gx + 0.5) * Layout.cellW;
+        const cy = (gy: number) => Layout.gridTop - (gy + 0.5) * Layout.cellH;
 
-        const cs = this.cellSize;
+        graphics.clear();
+        graphics.lineWidth = Layout.cellW * 0.4;
+
         const drawn = new Set<string>();
         const doneEdges: Array<[PipeNode, PipeNode]> = [];
         const buildingEdges: Array<[PipeNode, PipeNode]> = [];
@@ -108,29 +108,29 @@ export class PipeController extends Component {
         // 已完工管道：深灰实线
         graphics.strokeColor = COLOR_PIPE_DONE;
         for (const [a, b] of doneEdges) {
-            graphics.moveTo(a.gridX * cs + cs / 2, -a.gridY * cs - cs / 2);
-            graphics.lineTo(b.gridX * cs + cs / 2, -b.gridY * cs - cs / 2);
+            graphics.moveTo(cx(a.gridX), cy(a.gridY));
+            graphics.lineTo(cx(b.gridX), cy(b.gridY));
         }
         graphics.stroke();
 
         // 施工中管道：浅灰虚影
         graphics.strokeColor = COLOR_PIPE_BUILDING;
         for (const [a, b] of buildingEdges) {
-            graphics.moveTo(a.gridX * cs + cs / 2, -a.gridY * cs - cs / 2);
-            graphics.lineTo(b.gridX * cs + cs / 2, -b.gridY * cs - cs / 2);
+            graphics.moveTo(cx(a.gridX), cy(a.gridY));
+            graphics.lineTo(cx(b.gridX), cy(b.gridY));
         }
         graphics.stroke();
 
         // 石油流动：纯黑细线，从流经节点画向其 flowTarget（更接近地表一侧）
-        graphics.lineWidth = this.cellSize * 0.15;
+        graphics.lineWidth = Layout.cellW * 0.15;
         graphics.strokeColor = COLOR_FLOW;
         for (const node of this._pipeMgr.nodes.values()) {
             if (node.currentFlow <= 0 || node.status !== 'done') continue;
             const target = this._pipeMgr.nodes.get(node.flowTarget);
             if (!target) continue;
 
-            graphics.moveTo(node.gridX * cs + cs / 2, -node.gridY * cs - cs / 2);
-            graphics.lineTo(target.gridX * cs + cs / 2, -target.gridY * cs - cs / 2);
+            graphics.moveTo(cx(node.gridX), cy(node.gridY));
+            graphics.lineTo(cx(target.gridX), cy(target.gridY));
         }
         graphics.stroke();
     }
@@ -382,10 +382,8 @@ export class PipeController extends Component {
         const uiTransform = this.node.getComponent(UITransform);
         const uiLocation = event.getUILocation();
         const local = uiTransform.convertToNodeSpaceAR(new Vec3(uiLocation.x, uiLocation.y, 0));
-        return {
-            gridX: Math.floor(local.x / this.cellSize),
-            gridY: Math.floor(-local.y / this.cellSize),
-        };
+        const cell = worldToCell({ x: local.x, y: local.y });
+        return { gridX: cell.x, gridY: cell.y };
     }
 
     private _inGrid(x: number, y: number): boolean {

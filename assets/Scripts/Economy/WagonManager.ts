@@ -28,7 +28,7 @@ export class WagonManager {
     private readonly wagonCount = 1;
     private wagonCapacity = 30;
     private wagonSpeed = 15;
-    private readonly companyDistance = 100;
+    private companyDistance = 100;
 
     // 升级成本与效果（后续接入科技树 UI）
     private readonly capacityUpgradeCost = 100;
@@ -121,6 +121,11 @@ export class WagonManager {
 
     setSellMode(mode: 'left' | 'right' | 'auto'): void {
         this.sellMode = mode;
+    }
+
+    // 马车往返距离（左右公司到井区的距离），由 GameManager 按地图宽设置
+    setCompanyDistance(d: number): void {
+        this.companyDistance = d;
     }
 
     private _updateIdle(wagon: Wagon, economy: EconomyManager, market: MarketManager): void {

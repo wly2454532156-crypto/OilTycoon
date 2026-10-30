@@ -1,7 +1,8 @@
 import { _decorator, Component, Graphics, Color } from 'cc';
 import { GridManager, BlockType, GridBlock } from '../Core/GridManager';
+import { Layout } from '../Core/Layout';
 
-const { ccclass, property } = _decorator;
+const { ccclass } = _decorator;
 
 const COLOR_DIRT = new Color('#8B4513');
 const COLOR_ROCK = new Color('#555555');
@@ -14,9 +15,6 @@ const COLOR_OIL_HINT = new Color('#2B1D12');
 
 @ccclass('GridRenderer')
 export class GridRenderer extends Component {
-    @property
-    cellSize = 20;
-
     renderGrid(gridManager: GridManager, rigs: number[]): void {
         const graphics = this.getComponent(Graphics);
         if (!graphics) {
@@ -41,8 +39,13 @@ export class GridRenderer extends Component {
                 } else {
                     graphics.fillColor = COLOR_FOG;
                 }
-                // 网格 (0,0) 为左上、Y 向下，Graphics 的 Y 向上，故取负 Y 对齐
-                graphics.rect(x * this.cellSize, -y * this.cellSize, this.cellSize, this.cellSize);
+                // 绝对坐标（Canvas 中心、Y 向上）：格子 (x,y) 画在地层区对应位置
+                graphics.rect(
+                    Layout.gridLeft + x * Layout.cellW,
+                    Layout.gridTop - (y + 1) * Layout.cellH,
+                    Layout.cellW,
+                    Layout.cellH,
+                );
                 graphics.fill();
             }
         }
@@ -50,7 +53,7 @@ export class GridRenderer extends Component {
         // 井架标记：每口井架 1 格宽、2 格高，底边贴地表、正对其所在列
         for (const rx of rigs) {
             graphics.fillColor = COLOR_RIG;
-            graphics.rect(rx * this.cellSize, 0, this.cellSize, this.cellSize * 2);
+            graphics.rect(Layout.gridLeft + rx * Layout.cellW, Layout.gridTop, Layout.cellW, Layout.cellH * 2);
             graphics.fill();
         }
     }

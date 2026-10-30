@@ -1,5 +1,6 @@
-import { _decorator, Component, Node, Layers, input, Input, EventKeyboard, KeyCode } from 'cc';
+import { _decorator, Component, Node, Layers, input, Input, EventKeyboard, KeyCode, UITransform } from 'cc';
 import { GridManager } from './Core/GridManager';
+import { Layout } from './Core/Layout';
 import { PipeNetworkManager } from './Core/PipeNetworkManager';
 import { MarketManager } from './Economy/MarketManager';
 import { EconomyManager } from './Economy/EconomyManager';
@@ -78,6 +79,10 @@ export class GameManager extends Component {
         this.economy = new EconomyManager();
         this.pipeMgr = new PipeNetworkManager();
         this.wagonMgr = new WagonManager();
+        this.wagonMgr.setCompanyDistance(Layout.gridW / 2);
+
+        // 布局：Grid/Pipe/Wagon 节点归到画布中心，渲染用 Layout 绝对坐标（SDD §14.4）
+        this._layoutNodes();
 
         // 井架改为玩家自由选址（见 PipeController.onTouchStart），此处不再自动放置
         if (this.gridRenderer) {
@@ -89,6 +94,19 @@ export class GameManager extends Component {
 
         if (this.toolPanel) {
             this.toolPanel.init(this.economy, this.wagonMgr, this.pipeMgr, this.pipeController);
+        }
+    }
+
+    // 把 Grid/Pipe/Wagon 节点归到画布中心，渲染统一用 Layout 绝对坐标（SDD §14.4）
+    private _layoutNodes(): void {
+        const nodes: Node[] = [];
+        if (this.gridRenderer) nodes.push(this.gridRenderer.node);
+        if (this.pipeController) nodes.push(this.pipeController.node);
+        if (this.wagonRenderer) nodes.push(this.wagonRenderer.node);
+        for (const node of nodes) {
+            const ut = node.getComponent(UITransform);
+            if (ut) ut.setAnchorPoint(0.5, 0.5);
+            node.setPosition(0, 0, 0);
         }
     }
 

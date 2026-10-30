@@ -1,5 +1,6 @@
 import { _decorator, Component, Graphics, Color } from 'cc';
 import { WagonManager, WagonState } from '../Economy/WagonManager';
+import { Layout } from '../Core/Layout';
 
 const { ccclass } = _decorator;
 
@@ -24,8 +25,11 @@ export class WagonRenderer extends Component {
 
         graphics.clear();
 
+        // 天空带车道：地平线（地层顶部）上方 34 设计单位
+        const laneY = Layout.gridTop + 34;
+
         for (const wagon of wagonMgr.wagons) {
-            const y = 10 + wagon.id * 30;
+            const y = laneY + wagon.id * 4;
             graphics.fillColor = wagon.currentLoad > 0 ? COLOR_LOADED : COLOR_EMPTY;
             graphics.rect(wagon.positionX - this.wagonWidth / 2, y, this.wagonWidth, this.wagonHeight);
             graphics.fill();

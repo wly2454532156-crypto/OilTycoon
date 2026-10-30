@@ -186,9 +186,6 @@ export class ToolPanel extends Component {
                 case ToolType.Wagon:
                     if (this._wagonMgr) this._wagonMgr.buyWagon(this._economy);
                     break;
-                case ToolType.Refinery:
-                    this._economy.buyRefinery();
-                    break;
                 default:
                     break;
             }

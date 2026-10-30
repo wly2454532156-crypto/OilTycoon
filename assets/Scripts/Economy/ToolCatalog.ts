@@ -9,7 +9,6 @@ export enum ToolType {
     Mole = 5,     // 鼹鼠（工具）
     Dynamite = 6, // 炸药（工具）
     SuperSilo = 7, // 超级油罐（设施）
-    Refinery = 8,  // 炼油厂（设施）
 }
 
 export interface ToolDef {
@@ -24,7 +23,6 @@ export const TOOL_CATALOG: ToolDef[] = [
     { type: ToolType.Silo, name: '油罐', price: 250, category: 'facility' },
     { type: ToolType.SuperSilo, name: '超级油罐', price: 500, category: 'facility' },
     { type: ToolType.Wagon, name: '马车', price: 150, category: 'facility' },
-    { type: ToolType.Refinery, name: '炼油厂', price: 500, category: 'facility' },
     { type: ToolType.Dowser, name: '探测器', price: 100, category: 'tool' },
     { type: ToolType.Scanner, name: '扫描仪', price: 100, category: 'tool' },
     { type: ToolType.Mole, name: '鼹鼠', price: 100, category: 'tool' },

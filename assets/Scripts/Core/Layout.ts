@@ -32,6 +32,10 @@ export const Layout = (() => {
         statusBarY: DESIGN_H / 2 - 30,    // 状态条（60 高，顶部 0~60）
         shopBarY: DESIGN_H / 2 - 102,     // 购买栏（84 高，顶部 60~144）
         actionBarY: DESIGN_H / 2 - 706,   // 动作条（88 高，顶部 662~750）
+        // 左右公司面板（147×518，顶部 144~662）
+        panelCenterX: DESIGN_W / 2 - PANEL_W / 2,  // 593.5
+        panelCenterY: DESIGN_H / 2 - 403,           // -28
+        panelH: 518,
     };
 })();
 

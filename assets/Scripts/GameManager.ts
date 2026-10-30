@@ -11,6 +11,7 @@ import { UIPanel } from './View/UIPanel';
 import { WagonRenderer } from './View/WagonRenderer';
 import { ToolPanel } from './View/ToolPanel';
 import { RecapPanel } from './View/RecapPanel';
+import { CompanyPanel } from './View/CompanyPanel';
 
 const { ccclass, property } = _decorator;
 
@@ -30,6 +31,7 @@ export class GameManager extends Component {
     market!: MarketManager;
     economy!: EconomyManager;
     wagonMgr!: WagonManager;
+    private companyPanel: CompanyPanel = null;
 
     @property(GridRenderer)
     gridRenderer: GridRenderer = null;
@@ -94,6 +96,17 @@ export class GameManager extends Component {
 
         if (this.toolPanel) {
             this.toolPanel.init(this.economy, this.wagonMgr, this.pipeMgr, this.pipeController);
+        }
+
+        // 左右公司面板（SDD §14.5）
+        const canvas = this.node.parent;
+        if (canvas) {
+            const panelNode = new Node('CompanyPanel');
+            panelNode.layer = Layers.Enum.UI_2D;
+            this.companyPanel = panelNode.addComponent(CompanyPanel);
+            canvas.addChild(panelNode);
+            panelNode.setPosition(0, 0, 0);
+            this.companyPanel.init(this.economy, this.wagonMgr, this.market);
         }
     }
 
@@ -184,6 +197,9 @@ export class GameManager extends Component {
         }
         if (this.toolPanel) {
             this.toolPanel.refresh();
+        }
+        if (this.companyPanel) {
+            this.companyPanel.refresh();
         }
         if (this.wagonRenderer) {
             this.wagonRenderer.renderWagons(this.wagonMgr);
